@@ -1,0 +1,30 @@
+{
+  "name": "legal-doc-intelligence-agent",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Legal Document Intelligence Agent - HiDevs x Mastra Hackathon 2026 (Team KekaCoders)",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "seed": "tsx src/seed/seedQdrant.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^4.0.10",
+    "@ai-sdk/openai": "latest",
+    "@google/generative-ai": "^0.24.1",
+    "@hono/node-server": "latest",
+    "@mastra/core": "latest",
+    "@qdrant/js-client-rest": "latest",
+    "dotenv": "latest",
+    "hono": "latest",
+    "uuid": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/uuid": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

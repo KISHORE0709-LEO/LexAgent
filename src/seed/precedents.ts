@@ -1,0 +1,148 @@
+import type { ClausePayload } from "../lib/qdrant.js";
+
+// A small, realistic-looking set of "standard practice" clauses across two
+// jurisdictions. In a real firm this would be thousands of clauses pulled
+// from past deals - for the demo, ~20 is enough to make retrieval and
+// jurisdiction filtering visibly work.
+export const PRECEDENTS: ClausePayload[] = [
+  {
+    clauseType: "indemnification",
+    jurisdiction: "New York",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Each party shall indemnify, defend, and hold harmless the other party from and against third-party claims arising out of its own gross negligence or willful misconduct, subject to a liability cap of 12 months' fees paid under this Agreement.",
+  },
+  {
+    clauseType: "indemnification",
+    jurisdiction: "New York",
+    riskLevel: "medium",
+    source: "standard-practice-library",
+    text: "The Service Provider shall indemnify the Client for direct damages arising from breach of confidentiality obligations, capped at the total contract value.",
+  },
+  {
+    clauseType: "indemnification",
+    jurisdiction: "California",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Under California Civil Code principles, each party's indemnification obligation is limited to direct damages proximately caused by its own negligence, excluding consequential and punitive damages.",
+  },
+  {
+    clauseType: "limitation_of_liability",
+    jurisdiction: "New York",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "In no event shall either party's aggregate liability exceed the total fees paid in the twelve (12) months preceding the claim, except for breaches of confidentiality or IP infringement.",
+  },
+  {
+    clauseType: "limitation_of_liability",
+    jurisdiction: "California",
+    riskLevel: "medium",
+    source: "standard-practice-library",
+    text: "Liability shall be limited to direct damages only; California law disfavors broad waivers of statutory consumer remedies, so any waiver of Civil Code Section 1542 rights must be explicit and conspicuous.",
+  },
+  {
+    clauseType: "termination",
+    jurisdiction: "New York",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Either party may terminate this Agreement for convenience upon 30 days' written notice, or immediately for material breach that remains uncured after a 15-day cure period.",
+  },
+  {
+    clauseType: "termination",
+    jurisdiction: "California",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "This Agreement may be terminated by either party with 30 days' written notice; California favors clear cure periods, so a minimum 10-day cure window for curable breaches is standard practice.",
+  },
+  {
+    clauseType: "ip_ownership",
+    jurisdiction: "New York",
+    riskLevel: "high",
+    source: "standard-practice-library",
+    text: "All work product created under this Agreement shall be a 'work made for hire'; to the extent any work product does not qualify, Contractor hereby assigns all right, title, and interest to Client.",
+  },
+  {
+    clauseType: "ip_ownership",
+    jurisdiction: "California",
+    riskLevel: "high",
+    source: "standard-practice-library",
+    text: "Per California Labor Code Section 2870, inventions developed entirely on the Contractor's own time without use of Client resources are excluded from any pre-assignment obligation, and this exclusion must be stated in the Agreement.",
+  },
+  {
+    clauseType: "confidentiality",
+    jurisdiction: "New York",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Confidential Information shall be protected using no less than a reasonable standard of care, and confidentiality obligations shall survive termination for a period of five (5) years.",
+  },
+  {
+    clauseType: "confidentiality",
+    jurisdiction: "California",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Confidentiality obligations survive termination indefinitely for trade secrets as defined under the California Uniform Trade Secrets Act, and for five (5) years for all other Confidential Information.",
+  },
+  {
+    clauseType: "non_compete",
+    jurisdiction: "California",
+    riskLevel: "high",
+    source: "standard-practice-library",
+    text: "Non-compete clauses are void and unenforceable under California Business and Professions Code Section 16600, with narrow exceptions for the sale of business goodwill.",
+  },
+  {
+    clauseType: "non_compete",
+    jurisdiction: "New York",
+    riskLevel: "medium",
+    source: "standard-practice-library",
+    text: "Non-compete restrictions are enforceable if reasonable in geographic scope, duration (typically 6-12 months), and necessary to protect a legitimate business interest, per New York common law.",
+  },
+  {
+    clauseType: "dispute_resolution",
+    jurisdiction: "New York",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Any dispute arising under this Agreement shall be resolved through binding arbitration administered by the AAA in New York County, New York, with each party bearing its own costs.",
+  },
+  {
+    clauseType: "dispute_resolution",
+    jurisdiction: "California",
+    riskLevel: "medium",
+    source: "standard-practice-library",
+    text: "Mandatory arbitration clauses in California must comply with the California Arbitration Act and cannot waive an employee's right to file a PAGA representative action.",
+  },
+  {
+    clauseType: "payment_terms",
+    jurisdiction: "New York",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Invoices are due within 30 days of receipt; undisputed late payments accrue interest at 1.5% per month or the maximum rate permitted by law, whichever is lower.",
+  },
+  {
+    clauseType: "payment_terms",
+    jurisdiction: "California",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Invoices are due net-30; California usury limitations on interest rate caps for late payment penalties should be confirmed against the current statutory maximum.",
+  },
+  {
+    clauseType: "force_majeure",
+    jurisdiction: "New York",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Neither party shall be liable for delay or failure to perform due to causes beyond its reasonable control, including acts of God, war, or government action, provided the affected party gives prompt notice.",
+  },
+  {
+    clauseType: "force_majeure",
+    jurisdiction: "California",
+    riskLevel: "low",
+    source: "standard-practice-library",
+    text: "Performance obligations are excused during force majeure events per California Civil Code Section 1511, provided the non-performing party acted diligently to mitigate the delay.",
+  },
+  {
+    clauseType: "data_privacy",
+    jurisdiction: "California",
+    riskLevel: "high",
+    source: "standard-practice-library",
+    text: "Any processing of California resident personal information must comply with the California Consumer Privacy Act (CCPA) as amended by the CPRA, including honoring deletion and opt-out requests.",
+  },
+];
