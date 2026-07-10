@@ -94,11 +94,13 @@ export async function ensureCollection() {
 }
 
 export type ClausePayload = {
-  clauseType: string; // e.g. "indemnification", "limitation_of_liability"
-  jurisdiction: string; // e.g. "New York", "California", "Delaware"
-  text: string;
+  id: string;
+  jurisdiction: string;
+  category: string;
+  clauseText: string;
   riskLevel: "low" | "medium" | "high";
-  source: string; // e.g. "standard-practice-library"
+  standardPractice: boolean;
+  notes: string;
 };
 
 export async function upsertClause(id: string, text: string, payload: ClausePayload) {
