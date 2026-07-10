@@ -7,6 +7,7 @@ const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 import { stream } from "hono/streaming";
 import { legalDocumentWorkflow } from "./mastra/workflows/legalWorkflow.js";
+import { ensureCollection, ensureSessionCollection } from "./lib/qdrant.js";
 
 const app = new Hono();
 
@@ -146,6 +147,13 @@ function transformToMandamusFormat(workflowResult: any) {
 }
 
 const port = Number(process.env.PORT) || 3000;
-serve({ fetch: app.fetch, port }, () => {
+serve({ fetch: app.fetch, port }, async () => {
   console.log(`Legal Agent Backend running at http://localhost:${port}`);
+  try {
+    await ensureCollection();
+    await ensureSessionCollection();
+    console.log("Qdrant collections verified on startup.");
+  } catch (error) {
+    console.error("Failed to initialize Qdrant collections on startup:", error);
+  }
 });
