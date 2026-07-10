@@ -83,7 +83,10 @@ Respond ONLY as strict JSON with this exact structure:
   "partyB": "string (The respondent/second party)",
   "summary": "string (A plain language summary of what this contract is about)",
   "facts": ["string", "string"] (Key facts extracted from the contract),
-  "legalQuestions": ["string", "string"] (What are the core legal implications or questions arising from this contract?)
+  "legalQuestions": ["string", "string"] (What are the core legal implications or questions arising from this contract?),
+  "petitionerCounsel": "string (Counsel/lawyer/firm representing partyA, or N/A if not found)",
+  "respondentCounsel": "string (Counsel/lawyer/firm representing partyB, or N/A if not found)",
+  "evidence": ["string", "string"] (Exhibits, annexures, or referenced schedules in the contract, or empty array if not found)
 }`,
   model: google("gemini-1.5-flash"),
 });
