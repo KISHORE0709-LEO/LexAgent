@@ -1,5 +1,13 @@
 import { Agent } from "@mastra/core/agent";
-import { google } from "@ai-sdk/google";
+import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
+
+const bedrock = createAmazonBedrock({
+  region: process.env.AWS_REGION || "us-east-1",
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+});
+
+const model = bedrock("anthropic.claude-3-sonnet-20240229-v1:0");
 
 /**
  * Reads a contract clause plus retrieved precedent clauses, and decides
@@ -23,7 +31,7 @@ If the clause is materially different from all precedents, flag it as high risk
 and explain the specific deviation in plain English.
 
 Respond ONLY as strict JSON: { "riskLevel": "low"|"medium"|"high", "explanation": string, "deviatesFrom": string[] }`,
-  model: google("gemini-1.5-flash"),
+  model,
 });
 
 /**
@@ -48,7 +56,7 @@ check, you will also be given the specific failure reason - correct that
 specific issue in this attempt.
 
 Respond ONLY as strict JSON: { "revisedClause": string, "rationale": string }`,
-  model: google("gemini-1.5-flash"),
+  model,
 });
 
 /**
@@ -65,7 +73,7 @@ JSON: { "jurisdiction": string | null, "confidence": "high"|"low" }
 Use "New York" or "California" as the jurisdiction value if the contract
 references either state. If no governing law clause is found, set jurisdiction
 to null.`,
-  model: google("gemini-1.5-flash"),
+  model,
 });
 
 /**
@@ -88,5 +96,5 @@ Respond ONLY as strict JSON with this exact structure:
   "respondentCounsel": "string (Counsel/lawyer/firm representing partyB, or N/A if not found)",
   "evidence": ["string", "string"] (Exhibits, annexures, or referenced schedules in the contract, or empty array if not found)
 }`,
-  model: google("gemini-1.5-flash"),
+  model,
 });
