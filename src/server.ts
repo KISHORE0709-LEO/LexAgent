@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 import { stream } from "hono/streaming";
 import { legalDocumentWorkflow } from "./mastra/workflows/legalWorkflow.js";
-import { ensureCollection, ensureSessionCollection } from "./lib/qdrant.js";
+import { ensureCollection, ensureSessionCollection, ensurePolicyCollection } from "./lib/qdrant.js";
 
 const app = new Hono();
 
@@ -152,6 +152,7 @@ serve({ fetch: app.fetch, port }, async () => {
   try {
     await ensureCollection();
     await ensureSessionCollection();
+    await ensurePolicyCollection();
     console.log("Qdrant collections verified on startup.");
   } catch (error) {
     console.error("Failed to initialize Qdrant collections on startup:", error);
