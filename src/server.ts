@@ -51,37 +51,29 @@ app.post("/summarise", async (c) => {
       return c.json({ error: "Extracted text is too short." }, 400);
     }
 
-    // Use Hono's streaming response helper
+    // RUN THE MASTRA WORKFLOW (run it before starting the stream so we can return HTTP 500 on failure)
+    const run = await legalDocumentWorkflow.createRun();
+    const result = await run.start({ inputData: { contractText: extractedText } });
+
+    if (result.status !== "success") {
+      const errorMsg = result.status === "failed" ? String(result.error) : `Workflow status: ${result.status}`;
+      return c.json({ error: errorMsg }, 500);
+    }
+
+    // Use Hono's streaming response helper to stream progress & complete payload to the UI
     return stream(c, async (stream) => {
-      try {
-        sendStreamEvent(stream, { processing_status: "uploading" });
-        sendStreamEvent(stream, { processing_status: "extracting" });
-        sendStreamEvent(stream, { processing_status: "summarising" });
+      sendStreamEvent(stream, { processing_status: "uploading" });
+      sendStreamEvent(stream, { processing_status: "extracting" });
+      sendStreamEvent(stream, { processing_status: "summarising" });
+      sendStreamEvent(stream, { processing_status: "structuring" });
 
-        // RUN THE MASTRA WORKFLOW
-        const run = await legalDocumentWorkflow.createRun();
-        const result = await run.start({ inputData: { contractText: extractedText } });
+      // Transform workflow output into Mandamus expected format
+      const finalPayload = transformToMandamusFormat(result.result);
 
-        if (result.status !== "success") {
-          const errorMsg = result.status === "failed" ? String(result.error) : `Workflow status: ${result.status}`;
-          sendStreamEvent(stream, { processing_status: "failed", error: errorMsg });
-          return;
-        }
-
-        sendStreamEvent(stream, { processing_status: "structuring" });
-
-        // Transform workflow output into Mandamus expected format
-        const finalPayload = transformToMandamusFormat(result.result);
-
-        sendStreamEvent(stream, {
-          processing_status: "complete",
-          ...finalPayload,
-        });
-
-      } catch (err) {
-        console.error(err);
-        sendStreamEvent(stream, { processing_status: "failed", error: (err as Error).message });
-      }
+      sendStreamEvent(stream, {
+        processing_status: "complete",
+        ...finalPayload,
+      });
     });
   } catch (err) {
     console.error(err);

@@ -140,7 +140,7 @@ const clauseAnalysisStep = createStep({
 
       const analysisResponse = await clauseAnalysisAgent.generate(
         `Clause:\n${clauseText}\n\nJurisdiction: ${jurisdiction}\n\nPrecedents retrieved from Qdrant (same jurisdiction only):\n${precedents
-          .map((p, i) => `${i + 1}. [${p.riskLevel} risk, ${p.clauseType}] ${p.text}`)
+          .map((p, i) => `${i + 1}. [${p.riskLevel} risk, ${p.category}] ${p.clauseText}`)
           .join("\n")}`
       );
       let parsed: { riskLevel: "low" | "medium" | "high"; explanation: string };
@@ -163,7 +163,7 @@ const clauseAnalysisStep = createStep({
         clauseText,
         riskLevel: parsed.riskLevel,
         explanation: parsed.explanation,
-        retrievedPrecedents: precedents.map((p) => p.text),
+        retrievedPrecedents: precedents.map((p) => p.clauseText),
       });
     }
 
