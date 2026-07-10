@@ -16,7 +16,7 @@
     "@hono/node-server": "latest",
     "@mastra/core": "latest",
     "@qdrant/js-client-rest": "latest",
-    "ai": "^6.0.222",
+    "ai": "^7.0.20",
     "dotenv": "latest",
     "hono": "latest",
     "pdf-parse": "^2.4.5",

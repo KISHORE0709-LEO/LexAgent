@@ -1,4 +1,6 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
+import { google } from "@ai-sdk/google";
+import { embed } from "ai";
 import "dotenv/config";
 
 export const COLLECTION = "legal_clauses";
@@ -11,22 +13,34 @@ export const qdrant = new QdrantClient({
 });
 
 /**
- * Turns text into a vector. (Mocked for MVP to bypass Google API key restrictions on embeddings)
- * Generates a deterministic 768-dim vector based on the text length and character codes.
+ * Turns text into a vector using Google's embedding model.
+ * Falls back to gemini-embedding-001 if text-embedding-004 is retired/returns 404.
  */
 export async function getEmbedding(text: string): Promise<number[]> {
-  const dim = 768;
-  const vector = new Array(dim).fill(0);
-  
-  // Create a somewhat unique but deterministic vector for this text
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i);
-    vector[i % dim] += charCode / 1000.0;
+  try {
+    const { embedding } = await embed({
+      model: google.embedding("text-embedding-004"),
+      value: text,
+      providerOptions: {
+        google: {
+          outputDimensionality: EMBEDDING_DIM,
+        },
+      },
+    });
+    return embedding;
+  } catch (error) {
+    console.warn(`Failed to embed using text-embedding-004: ${(error as Error).message}. Falling back to gemini-embedding-001.`);
+    const { embedding } = await embed({
+      model: google.embedding("gemini-embedding-001"),
+      value: text,
+      providerOptions: {
+        google: {
+          outputDimensionality: EMBEDDING_DIM,
+        },
+      },
+    });
+    return embedding;
   }
-  
-  // Normalize
-  const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0)) || 1;
-  return vector.map(v => v / magnitude);
 }
 
 /**
@@ -34,15 +48,20 @@ export async function getEmbedding(text: string): Promise<number[]> {
  * Run once via `npm run seed`.
  */
 export async function ensureCollection() {
-  const collections = await qdrant.getCollections();
-  const exists = collections.collections.some((c) => c.name === COLLECTION);
-  if (!exists) {
-    await qdrant.createCollection(COLLECTION, {
-      vectors: { size: EMBEDDING_DIM, distance: "Cosine" },
-    });
-    console.log(`Created Qdrant collection "${COLLECTION}"`);
-  } else {
-    console.log(`Qdrant collection "${COLLECTION}" already exists`);
+  try {
+    const collections = await qdrant.getCollections();
+    const exists = collections.collections.some((c) => c.name === COLLECTION);
+    if (!exists) {
+      await qdrant.createCollection(COLLECTION, {
+        vectors: { size: EMBEDDING_DIM, distance: "Cosine" },
+      });
+      console.log(`Created Qdrant collection "${COLLECTION}"`);
+    } else {
+      console.log(`Qdrant collection "${COLLECTION}" already exists`);
+    }
+  } catch (error) {
+    console.error("Failed to ensure collection in Qdrant:", error);
+    throw error;
   }
 }
 
@@ -55,10 +74,19 @@ export type ClausePayload = {
 };
 
 export async function upsertClause(id: string, text: string, payload: ClausePayload) {
-  const vector = await getEmbedding(text);
-  await qdrant.upsert(COLLECTION, {
-    points: [{ id, vector, payload }],
-  });
+  try {
+    const vector = await getEmbedding(text);
+    const normalizedPayload = {
+      ...payload,
+      jurisdiction: payload.jurisdiction.toLowerCase(),
+    };
+    await qdrant.upsert(COLLECTION, {
+      points: [{ id, vector, payload: normalizedPayload }],
+    });
+  } catch (error) {
+    console.error(`Failed to upsert clause with ID ${id} to Qdrant:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -71,17 +99,23 @@ export async function searchClausesByJurisdiction(
   jurisdiction: string,
   limit = 5
 ) {
-  const vector = await getEmbedding(queryText);
-  const result = await qdrant.search(COLLECTION, {
-    vector,
-    limit,
-    filter: {
-      must: [{ key: "jurisdiction", match: { value: jurisdiction } }],
-    },
-    with_payload: true,
-  });
-  return result.map((r) => ({
-    score: r.score,
-    ...(r.payload as unknown as ClausePayload),
-  }));
+  try {
+    const vector = await getEmbedding(queryText);
+    const result = await qdrant.search(COLLECTION, {
+      vector,
+      limit,
+      filter: {
+        must: [{ key: "jurisdiction", match: { value: jurisdiction.toLowerCase() } }],
+      },
+      with_payload: true,
+    });
+    return result.map((r) => ({
+      score: r.score,
+      ...(r.payload as unknown as ClausePayload),
+    }));
+  } catch (error) {
+    console.error(`Failed to search clauses for jurisdiction "${jurisdiction}" in Qdrant:`, error);
+    throw error;
+  }
 }
+
