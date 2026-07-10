@@ -25,12 +25,28 @@ const inputGuardStep = createStep({
 const jurisdictionStep = createStep({
   id: "jurisdiction-resolve",
   inputSchema: z.object({ contractText: z.string(), inputGuardPassed: z.boolean() }),
-  outputSchema: z.object({ contractText: z.string(), jurisdiction: z.string().nullable() }),
+  outputSchema: z.object({
+    contractText: z.string(),
+    jurisdiction: z.string().nullable(),
+    status: z.string().optional(),
+    message: z.string().optional(),
+  }),
   execute: async ({ inputData }) => {
     const response = await jurisdictionAgent.generate(
       `Contract text:\n\n${inputData.contractText}`
     );
-    const parsed = JSON.parse(response.text) as { jurisdiction: string | null };
+    let parsed: { jurisdiction: string | null } = { jurisdiction: null };
+    try {
+      parsed = JSON.parse(response.text);
+    } catch (e) {
+      console.error("Failed to parse jurisdictionAgent response JSON. Raw response text was:\n", response.text);
+      return {
+        contractText: inputData.contractText,
+        jurisdiction: null,
+        status: "error",
+        message: `Failed to parse jurisdiction resolution response: ${(e as Error).message}`,
+      };
+    }
     return { contractText: inputData.contractText, jurisdiction: parsed.jurisdiction };
   },
 });
@@ -45,7 +61,12 @@ type ClauseAnalysis = {
 
 const clauseAnalysisStep = createStep({
   id: "clause-analysis",
-  inputSchema: z.object({ contractText: z.string(), jurisdiction: z.string().nullable() }),
+  inputSchema: z.object({
+    contractText: z.string(),
+    jurisdiction: z.string().nullable(),
+    status: z.string().optional(),
+    message: z.string().optional(),
+  }),
   outputSchema: z.object({
     jurisdiction: z.string(),
     clauses: z.array(
@@ -56,14 +77,26 @@ const clauseAnalysisStep = createStep({
         retrievedPrecedents: z.array(z.string()),
       })
     ),
+    status: z.string().optional(),
+    message: z.string().optional(),
   }),
   execute: async ({ inputData }) => {
+    if (inputData.status === "error") {
+      return {
+        status: "error",
+        message: inputData.message || "An error occurred during jurisdiction resolution",
+        jurisdiction: "",
+        clauses: [],
+      };
+    }
+
     if (!inputData.jurisdiction) {
-      // PRD requirement: never guess. Pause and require manual input instead
-      // of silently defaulting to a jurisdiction.
-      throw new Error(
-        "Could not resolve governing-law jurisdiction. Manual jurisdiction input required before analysis can continue."
-      );
+      return {
+        status: "jurisdiction_required",
+        message: "Could not resolve governing-law jurisdiction. Manual jurisdiction input required before analysis can continue.",
+        jurisdiction: "",
+        clauses: [],
+      };
     }
     const jurisdiction = inputData.jurisdiction;
 
@@ -85,10 +118,18 @@ const clauseAnalysisStep = createStep({
           .map((p, i) => `${i + 1}. [${p.riskLevel} risk, ${p.clauseType}] ${p.text}`)
           .join("\n")}`
       );
-      const parsed = JSON.parse(analysisResponse.text) as {
-        riskLevel: "low" | "medium" | "high";
-        explanation: string;
-      };
+      let parsed: { riskLevel: "low" | "medium" | "high"; explanation: string };
+      try {
+        parsed = JSON.parse(analysisResponse.text);
+      } catch (e) {
+        console.error("Failed to parse clauseAnalysisAgent JSON response. Raw response text was:\n", analysisResponse.text);
+        return {
+          status: "error",
+          message: `Failed to parse clause analysis response: ${(e as Error).message}`,
+          jurisdiction: jurisdiction,
+          clauses: [],
+        };
+      }
 
       clauses.push({
         clauseText,
@@ -125,6 +166,8 @@ const draftAndGuardStep = createStep({
         retrievedPrecedents: z.array(z.string()),
       })
     ),
+    status: z.string().optional(),
+    message: z.string().optional(),
   }),
   outputSchema: z.object({
     jurisdiction: z.string(),
@@ -139,8 +182,27 @@ const draftAndGuardStep = createStep({
         attempts: z.number(),
       })
     ),
+    status: z.string().optional(),
+    message: z.string().optional(),
   }),
   execute: async ({ inputData }) => {
+    if (inputData.status === "jurisdiction_required") {
+      return {
+        jurisdiction: "",
+        results: [],
+        status: "jurisdiction_required",
+        message: inputData.message,
+      };
+    }
+    if (inputData.status === "error") {
+      return {
+        jurisdiction: "",
+        results: [],
+        status: "error",
+        message: inputData.message,
+      };
+    }
+
     const MAX_ATTEMPTS = 3;
     const results: DraftResult[] = [];
 
@@ -177,7 +239,18 @@ const draftAndGuardStep = createStep({
           .join("\n")}${priorFailure ? `\n\nPrevious attempt failed because: ${priorFailure}\nFix this specific issue.` : ""}`;
 
         const draftResponse = await draftingAgent.generate(draftPrompt);
-        const parsed = JSON.parse(draftResponse.text) as { revisedClause: string; rationale: string };
+        let parsed: { revisedClause: string; rationale: string };
+        try {
+          parsed = JSON.parse(draftResponse.text);
+        } catch (e) {
+          console.error("Failed to parse draftingAgent response JSON. Raw response text was:\n", draftResponse.text);
+          return {
+            status: "error",
+            message: `Failed to parse drafting response: ${(e as Error).message}`,
+            jurisdiction: inputData.jurisdiction,
+            results: [],
+          };
+        }
         revisedClause = parsed.revisedClause;
         rationale = parsed.rationale;
 
@@ -209,6 +282,8 @@ const documentAnalysisStep = createStep({
     contractText: z.string(),
     jurisdiction: z.string(),
     results: z.array(z.any()), // From draftAndGuardStep
+    status: z.string().optional(),
+    message: z.string().optional(),
   }),
   outputSchema: z.object({
     jurisdiction: z.string(),
@@ -221,22 +296,65 @@ const documentAnalysisStep = createStep({
       facts: z.array(z.string()),
       legalQuestions: z.array(z.string()),
     }),
+    status: z.string().optional(),
+    message: z.string().optional(),
   }),
   execute: async ({ inputData }) => {
+    if (inputData.status === "jurisdiction_required") {
+      return {
+        jurisdiction: "",
+        results: [],
+        fullAnalysis: {
+          caseId: "JURISDICTION-REQ",
+          partyA: "N/A",
+          partyB: "N/A",
+          summary: "Could not resolve governing-law jurisdiction. Manual jurisdiction input required before analysis can continue.",
+          facts: [],
+          legalQuestions: [],
+        },
+        status: "jurisdiction_required",
+        message: inputData.message,
+      };
+    }
+
+    if (inputData.status === "error") {
+      return {
+        jurisdiction: "",
+        results: [],
+        fullAnalysis: {
+          caseId: "PARSING-ERROR",
+          partyA: "N/A",
+          partyB: "N/A",
+          summary: `An error occurred during pipeline execution: ${inputData.message}`,
+          facts: [],
+          legalQuestions: [],
+        },
+        status: "error",
+        message: inputData.message,
+      };
+    }
+
     const analysisResponse = await documentAnalysisAgent.generate(
       `Contract text:\n\n${inputData.contractText}`
     );
     let parsed: any;
     try {
       parsed = JSON.parse(analysisResponse.text);
-    } catch {
-      parsed = {
-        caseId: "DOC-ERR",
-        partyA: "Unknown",
-        partyB: "Unknown",
-        summary: analysisResponse.text.substring(0, 200),
-        facts: ["Could not parse response"],
-        legalQuestions: [],
+    } catch (e) {
+      console.error("Failed to parse documentAnalysisAgent JSON response. Raw response text was:\n", analysisResponse.text);
+      return {
+        jurisdiction: inputData.jurisdiction,
+        results: inputData.results,
+        fullAnalysis: {
+          caseId: "DOC-ERR",
+          partyA: "Unknown",
+          partyB: "Unknown",
+          summary: "Could not parse document analysis response.",
+          facts: [],
+          legalQuestions: [],
+        },
+        status: "error",
+        message: `Failed to parse document analysis response: ${(e as Error).message}`,
       };
     }
     return {
@@ -261,16 +379,20 @@ export const legalDocumentWorkflow = createWorkflow({
       facts: z.array(z.string()),
       legalQuestions: z.array(z.string()),
     }),
+    status: z.string().optional(),
+    message: z.string().optional(),
   }),
 })
   .then(inputGuardStep)
   .then(jurisdictionStep)
   .then(clauseAnalysisStep)
   .then(draftAndGuardStep)
-  .then(documentAnalysisStep, {
-    // We map outputs from previous steps as input to this step
-    contractText: { step: "input-guard", path: "contractText" },
-    jurisdiction: { step: "draft-and-guard", path: "jurisdiction" },
-    results: { step: "draft-and-guard", path: "results" },
+  .map({
+    contractText: { step: inputGuardStep, path: "contractText" },
+    jurisdiction: { step: draftAndGuardStep, path: "jurisdiction" },
+    results: { step: draftAndGuardStep, path: "results" },
+    status: { step: draftAndGuardStep, path: "status" },
+    message: { step: draftAndGuardStep, path: "message" },
   })
+  .then(documentAnalysisStep)
   .commit();

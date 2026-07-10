@@ -5,6 +5,7 @@ import { cors } from "hono/cors";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
+import { stream } from "hono/streaming";
 import { legalDocumentWorkflow } from "./mastra/workflows/legalWorkflow.js";
 
 const app = new Hono();
@@ -21,7 +22,7 @@ const sendStreamEvent = (stream: any, obj: any) => {
 
 app.post("/summarise", async (c) => {
   // Use Hono's streaming response
-  return c.stream(async (stream) => {
+  return stream(c, async (stream) => {
     try {
       sendStreamEvent(stream, { processing_status: "uploading" });
 
@@ -68,8 +69,9 @@ app.post("/summarise", async (c) => {
       const run = await legalDocumentWorkflow.createRun();
       const result = await run.start({ inputData: { contractText: extractedText } });
 
-      if (result.status === "failed") {
-        sendStreamEvent(stream, { processing_status: "failed", error: String(result.error) });
+      if (result.status !== "success") {
+        const errorMsg = result.status === "failed" ? String(result.error) : `Workflow status: ${result.status}`;
+        sendStreamEvent(stream, { processing_status: "failed", error: errorMsg });
         return;
       }
 
@@ -137,7 +139,9 @@ function transformToMandamusFormat(workflowResult: any) {
     document_inventory: [{name: "Primary Document", type: "Contract"}],
     student_mode: null,
     evidence_analysis: {},
-    adr_analysis: { suggestion: "Negotiate flagged clauses to reduce liability." }
+    adr_analysis: { suggestion: "Negotiate flagged clauses to reduce liability." },
+    status: workflowResult.status || "success",
+    message: workflowResult.message || ""
   };
 }
 
