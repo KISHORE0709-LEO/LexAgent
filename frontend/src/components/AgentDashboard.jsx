@@ -263,6 +263,32 @@ export default function AgentDashboard() {
                 </div>
               </div>
             )}
+
+            <div className="portal-link-container" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                className="portal-link-btn"
+                onClick={() => navigate('/manual-review', { state: { analysisData: data } })}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'linear-gradient(135deg, #7b61ff 0%, #6347f5 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(123, 97, 255, 0.25)',
+                  transition: 'all 0.2s ease'
+                }}
+                id={`btn-open-review-portal-${data.case_id}`}
+              >
+                <Scale size={14} />
+                <span>Open Manual Review Portal</span>
+              </button>
+            </div>
           </div>
         </div>
       );
