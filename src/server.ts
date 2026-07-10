@@ -21,77 +21,72 @@ const sendStreamEvent = (stream: any, obj: any) => {
 };
 
 app.post("/summarise", async (c) => {
-  // Use Hono's streaming response
-  return stream(c, async (stream) => {
-    try {
-      sendStreamEvent(stream, { processing_status: "uploading" });
+  try {
+    const body = await c.req.parseBody();
+    const files = body["files"];
+    if (!files) {
+      return c.json({ error: "No files provided." }, 400);
+    }
 
-      const body = await c.req.parseBody();
-      const files = body["files"];
-      let extractedText = "";
+    // Handle both single file and array of files
+    const fileArray = Array.isArray(files) ? files : [files];
+    let extractedText = "";
 
-      if (!files) {
-        sendStreamEvent(stream, { processing_status: "failed", error: "No files provided." });
-        return;
-      }
-
-      // Handle both single file and array of files
-      const fileArray = Array.isArray(files) ? files : [files];
-      
-      // Delay for UX
-      await new Promise(r => setTimeout(r, 1000));
-      sendStreamEvent(stream, { processing_status: "extracting" });
-
-      for (const file of fileArray) {
-        if (file instanceof File) {
-          const buffer = await file.arrayBuffer();
-          // Extract text using pdf-parse if it's a PDF
-          if (file.name.toLowerCase().endsWith(".pdf")) {
-            const pdfData = await pdf(Buffer.from(buffer));
-            extractedText += pdfData.text + "\n\n";
-          } else {
-             // Fallback to raw text for now
-             const text = new TextDecoder().decode(buffer);
-             extractedText += text + "\n\n";
-          }
+    for (const file of fileArray) {
+      if (file instanceof File) {
+        const buffer = await file.arrayBuffer();
+        // Extract text using pdf-parse if it's a PDF
+        if (file.name.toLowerCase().endsWith(".pdf")) {
+          const pdfData = await pdf(Buffer.from(buffer));
+          extractedText += pdfData.text + "\n\n";
+        } else {
+          // Fallback to raw text for now
+          const text = new TextDecoder().decode(buffer);
+          extractedText += text + "\n\n";
         }
       }
-
-      if (extractedText.trim().length < 20) {
-        sendStreamEvent(stream, { processing_status: "failed", error: "Extracted text is too short." });
-        return;
-      }
-
-      await new Promise(r => setTimeout(r, 1000));
-      sendStreamEvent(stream, { processing_status: "summarising" });
-
-      // RUN THE MASTRA WORKFLOW
-      const run = await legalDocumentWorkflow.createRun();
-      const result = await run.start({ inputData: { contractText: extractedText } });
-
-      if (result.status !== "success") {
-        const errorMsg = result.status === "failed" ? String(result.error) : `Workflow status: ${result.status}`;
-        sendStreamEvent(stream, { processing_status: "failed", error: errorMsg });
-        return;
-      }
-
-      await new Promise(r => setTimeout(r, 1000));
-      sendStreamEvent(stream, { processing_status: "structuring" });
-
-      // Transform workflow output into Mandamus expected format
-      const finalPayload = transformToMandamusFormat(result.result);
-
-      await new Promise(r => setTimeout(r, 1000));
-      sendStreamEvent(stream, {
-        processing_status: "complete",
-        ...finalPayload,
-      });
-
-    } catch (err) {
-      console.error(err);
-      sendStreamEvent(stream, { processing_status: "failed", error: (err as Error).message });
     }
-  });
+
+    if (extractedText.trim().length < 20) {
+      return c.json({ error: "Extracted text is too short." }, 400);
+    }
+
+    // Use Hono's streaming response helper
+    return stream(c, async (stream) => {
+      try {
+        sendStreamEvent(stream, { processing_status: "uploading" });
+        sendStreamEvent(stream, { processing_status: "extracting" });
+        sendStreamEvent(stream, { processing_status: "summarising" });
+
+        // RUN THE MASTRA WORKFLOW
+        const run = await legalDocumentWorkflow.createRun();
+        const result = await run.start({ inputData: { contractText: extractedText } });
+
+        if (result.status !== "success") {
+          const errorMsg = result.status === "failed" ? String(result.error) : `Workflow status: ${result.status}`;
+          sendStreamEvent(stream, { processing_status: "failed", error: errorMsg });
+          return;
+        }
+
+        sendStreamEvent(stream, { processing_status: "structuring" });
+
+        // Transform workflow output into Mandamus expected format
+        const finalPayload = transformToMandamusFormat(result.result);
+
+        sendStreamEvent(stream, {
+          processing_status: "complete",
+          ...finalPayload,
+        });
+
+      } catch (err) {
+        console.error(err);
+        sendStreamEvent(stream, { processing_status: "failed", error: (err as Error).message });
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
 });
 
 /**
@@ -99,8 +94,7 @@ app.post("/summarise", async (c) => {
  * expected by the Mandamus UI Summarizer dashboard.
  */
 function transformToMandamusFormat(workflowResult: any) {
-  // workflowResult contains: { jurisdiction, results, fullAnalysis (which we will add) }
-  const data = workflowResult.fullAnalysis || {}; // We will make the workflow output this
+  const data = workflowResult.fullAnalysis || {};
   const clauses = workflowResult.results || [];
 
   // Map high/medium risk clauses into IPC Sections (which the UI calls "Flagged Statutes")
@@ -116,23 +110,37 @@ function transformToMandamusFormat(workflowResult: any) {
     };
   });
 
+  // Dynamically calculate confidence score based on the risk profile of analyzed clauses
+  const highRiskCount = clauses.filter((c: any) => c.riskLevel === "high").length;
+  const mediumRiskCount = clauses.filter((c: any) => c.riskLevel === "medium").length;
+  const totalCount = clauses.length || 1;
+  const confidence = Math.max(65, Math.round(100 - (highRiskCount / totalCount) * 40 - (mediumRiskCount / totalCount) * 15));
+
+  // Build real evidence lists from exhibits and retrieved Qdrant precedent citations
+  const contractEvidence = data.evidence || [];
+  const qdrantEvidence = clauses
+    .flatMap((c: any) => c.retrievedPrecedents || [])
+    .map((text: string) => `Qdrant Precedent Citation: ${text.substring(0, 100)}...`);
+  const mergedEvidence = [...contractEvidence, ...qdrantEvidence]
+    .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index);
+
   return {
     case_id: data.caseId || "DOC-" + Math.floor(Math.random() * 10000),
     court_name: workflowResult.jurisdiction || "Unknown Jurisdiction",
     filing_date: new Date().getFullYear().toString(),
     pending_duration: "N/A",
     petitioner: data.partyA || "Party A",
-    petitioner_counsel: "N/A",
+    petitioner_counsel: data.petitionerCounsel || "N/A",
     respondent: data.partyB || "Party B",
-    respondent_counsel: "N/A",
+    respondent_counsel: data.respondentCounsel || "N/A",
     plain_summary: data.summary || "Legal document analysis complete.",
     key_facts: data.facts || ["Analyzed contract successfully."],
     core_legal_questions: data.legalQuestions || ["Are the clauses enforceable?", "Are there high risk liabilities?"],
     ipc_sections: flaggedClauses, // We hijacked this for Flagged Clauses
-    evidence: [], 
+    evidence: mergedEvidence, 
     case_type: "Contract Review",
     is_undertrial: false,
-    confidence_score: 92,
+    confidence_score: confidence,
     argument_strength: {},
     procedural_path: [],
     case_outcome_analysis: {},
