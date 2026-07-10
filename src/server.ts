@@ -90,7 +90,6 @@ function transformToMandamusFormat(workflowResult: any) {
   const data = workflowResult.fullAnalysis || {};
   const clauses = workflowResult.results || [];
 
-  // Map high/medium risk clauses into IPC Sections (which the UI calls "Flagged Statutes")
   const flaggedClauses = clauses.map((c: any) => {
     let desc = c.rationale ? `Issue: ${c.rationale}\n\n` : `Analysis pending.\n\n`;
     if (c.revisedClause) desc += `[AI Suggestion]: ${c.revisedClause}\n`;
@@ -99,7 +98,13 @@ function transformToMandamusFormat(workflowResult: any) {
     }
     return {
       section: `[${c.riskLevel.toUpperCase()}] Clause`,
-      description: desc
+      description: desc,
+      riskLevel: c.riskLevel || "low",
+      originalClause: c.originalClause || "",
+      revisedClause: c.revisedClause || null,
+      rationale: c.rationale || null,
+      guardPassed: c.guardPassed !== false,
+      guardReasons: c.guardReasons || [],
     };
   });
 
