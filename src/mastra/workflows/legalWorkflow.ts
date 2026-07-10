@@ -30,6 +30,9 @@ const jurisdictionStep = createStep({
     jurisdiction: z.string().nullable(),
     status: z.string().optional(),
     message: z.string().optional(),
+    success: z.boolean().optional(),
+    error: z.string().optional(),
+    raw: z.string().optional(),
   }),
   execute: async ({ inputData }) => {
     const response = await jurisdictionAgent.generate(
@@ -45,8 +48,21 @@ const jurisdictionStep = createStep({
         jurisdiction: null,
         status: "error",
         message: `Failed to parse jurisdiction resolution response: ${(e as Error).message}`,
+        success: false,
+        error: "parse_failed",
+        raw: response.text,
       };
     }
+    
+    if (parsed.jurisdiction === null) {
+      return {
+        contractText: inputData.contractText,
+        jurisdiction: null,
+        status: "jurisdiction_required",
+        message: "Could not detect jurisdiction. Please specify your contract jurisdiction.",
+      };
+    }
+
     return { contractText: inputData.contractText, jurisdiction: parsed.jurisdiction };
   },
 });
@@ -66,6 +82,9 @@ const clauseAnalysisStep = createStep({
     jurisdiction: z.string().nullable(),
     status: z.string().optional(),
     message: z.string().optional(),
+    success: z.boolean().optional(),
+    error: z.string().optional(),
+    raw: z.string().optional(),
   }),
   outputSchema: z.object({
     jurisdiction: z.string(),
@@ -79,21 +98,27 @@ const clauseAnalysisStep = createStep({
     ),
     status: z.string().optional(),
     message: z.string().optional(),
+    success: z.boolean().optional(),
+    error: z.string().optional(),
+    raw: z.string().optional(),
   }),
   execute: async ({ inputData }) => {
-    if (inputData.status === "error") {
+    if (inputData.success === false || inputData.status === "error") {
       return {
         status: "error",
         message: inputData.message || "An error occurred during jurisdiction resolution",
         jurisdiction: "",
         clauses: [],
+        success: false,
+        error: inputData.error || "error",
+        raw: inputData.raw || "",
       };
     }
 
-    if (!inputData.jurisdiction) {
+    if (inputData.status === "jurisdiction_required" || !inputData.jurisdiction) {
       return {
         status: "jurisdiction_required",
-        message: "Could not resolve governing-law jurisdiction. Manual jurisdiction input required before analysis can continue.",
+        message: inputData.message || "Could not detect jurisdiction. Please specify your contract jurisdiction.",
         jurisdiction: "",
         clauses: [],
       };
@@ -128,6 +153,9 @@ const clauseAnalysisStep = createStep({
           message: `Failed to parse clause analysis response: ${(e as Error).message}`,
           jurisdiction: jurisdiction,
           clauses: [],
+          success: false,
+          error: "parse_failed",
+          raw: analysisResponse.text,
         };
       }
 
@@ -168,6 +196,9 @@ const draftAndGuardStep = createStep({
     ),
     status: z.string().optional(),
     message: z.string().optional(),
+    success: z.boolean().optional(),
+    error: z.string().optional(),
+    raw: z.string().optional(),
   }),
   outputSchema: z.object({
     jurisdiction: z.string(),
@@ -184,21 +215,27 @@ const draftAndGuardStep = createStep({
     ),
     status: z.string().optional(),
     message: z.string().optional(),
+    success: z.boolean().optional(),
+    error: z.string().optional(),
+    raw: z.string().optional(),
   }),
   execute: async ({ inputData }) => {
+    if (inputData.success === false || inputData.status === "error") {
+      return {
+        jurisdiction: "",
+        results: [],
+        status: "error",
+        message: inputData.message,
+        success: false,
+        error: inputData.error || "error",
+        raw: inputData.raw || "",
+      };
+    }
     if (inputData.status === "jurisdiction_required") {
       return {
         jurisdiction: "",
         results: [],
         status: "jurisdiction_required",
-        message: inputData.message,
-      };
-    }
-    if (inputData.status === "error") {
-      return {
-        jurisdiction: "",
-        results: [],
-        status: "error",
         message: inputData.message,
       };
     }
@@ -249,6 +286,9 @@ const draftAndGuardStep = createStep({
             message: `Failed to parse drafting response: ${(e as Error).message}`,
             jurisdiction: inputData.jurisdiction,
             results: [],
+            success: false,
+            error: "parse_failed",
+            raw: draftResponse.text,
           };
         }
         revisedClause = parsed.revisedClause;
@@ -284,6 +324,9 @@ const documentAnalysisStep = createStep({
     results: z.array(z.any()), // From draftAndGuardStep
     status: z.string().optional(),
     message: z.string().optional(),
+    success: z.boolean().optional(),
+    error: z.string().optional(),
+    raw: z.string().optional(),
   }),
   outputSchema: z.object({
     jurisdiction: z.string(),
@@ -301,29 +344,12 @@ const documentAnalysisStep = createStep({
     }),
     status: z.string().optional(),
     message: z.string().optional(),
+    success: z.boolean().optional(),
+    error: z.string().optional(),
+    raw: z.string().optional(),
   }),
   execute: async ({ inputData }) => {
-    if (inputData.status === "jurisdiction_required") {
-      return {
-        jurisdiction: "",
-        results: [],
-        fullAnalysis: {
-          caseId: "JURISDICTION-REQ",
-          partyA: "N/A",
-          partyB: "N/A",
-          summary: "Could not resolve governing-law jurisdiction. Manual jurisdiction input required before analysis can continue.",
-          facts: [],
-          legalQuestions: [],
-          petitionerCounsel: "N/A",
-          respondentCounsel: "N/A",
-          evidence: [],
-        },
-        status: "jurisdiction_required",
-        message: inputData.message,
-      };
-    }
-
-    if (inputData.status === "error") {
+    if (inputData.success === false || inputData.status === "error") {
       return {
         jurisdiction: "",
         results: [],
@@ -340,6 +366,29 @@ const documentAnalysisStep = createStep({
         },
         status: "error",
         message: inputData.message,
+        success: false,
+        error: inputData.error || "error",
+        raw: inputData.raw || "",
+      };
+    }
+
+    if (inputData.status === "jurisdiction_required") {
+      return {
+        jurisdiction: "",
+        results: [],
+        fullAnalysis: {
+          caseId: "JURISDICTION-REQ",
+          partyA: "N/A",
+          partyB: "N/A",
+          summary: "Could not detect jurisdiction. Please specify your contract jurisdiction.",
+          facts: [],
+          legalQuestions: [],
+          petitionerCounsel: "N/A",
+          respondentCounsel: "N/A",
+          evidence: [],
+        },
+        status: "jurisdiction_required",
+        message: inputData.message || "Could not detect jurisdiction. Please specify your contract jurisdiction.",
       };
     }
 
@@ -367,6 +416,9 @@ const documentAnalysisStep = createStep({
         },
         status: "error",
         message: `Failed to parse document analysis response: ${(e as Error).message}`,
+        success: false,
+        error: "parse_failed",
+        raw: analysisResponse.text,
       };
     }
     return {
@@ -396,6 +448,9 @@ export const legalDocumentWorkflow = createWorkflow({
     }),
     status: z.string().optional(),
     message: z.string().optional(),
+    success: z.boolean().optional(),
+    error: z.string().optional(),
+    raw: z.string().optional(),
   }),
 })
   .then(inputGuardStep)
@@ -408,6 +463,9 @@ export const legalDocumentWorkflow = createWorkflow({
     results: { step: draftAndGuardStep, path: "results" },
     status: { step: draftAndGuardStep, path: "status" },
     message: { step: draftAndGuardStep, path: "message" },
+    success: { step: draftAndGuardStep, path: "success" },
+    error: { step: draftAndGuardStep, path: "error" },
+    raw: { step: draftAndGuardStep, path: "raw" },
   })
   .then(documentAnalysisStep)
   .commit();
