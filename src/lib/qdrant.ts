@@ -1,5 +1,6 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { v4 as uuidv4 } from "uuid";
 import "dotenv/config";
 
 export const COLLECTION = "legal_clauses";
@@ -145,6 +146,97 @@ export async function searchClausesByJurisdiction(
     }));
   } catch (error) {
     console.error(`Failed to search clauses for jurisdiction "${jurisdiction}" in Qdrant:`, error);
+    throw error;
+  }
+}
+
+// ---------- Long-term Session Memory Collection ----------
+export const SESSIONS_COLLECTION = "legal_sessions";
+
+/**
+ * Ensures the session memory collection exists in Qdrant.
+ */
+export async function ensureSessionCollection() {
+  try {
+    const collections = await qdrant.getCollections();
+    const exists = collections.collections.some((c) => c.name === SESSIONS_COLLECTION);
+
+    if (exists) {
+      // Check if dimension matches
+      const info = await qdrant.getCollection(SESSIONS_COLLECTION);
+      const currentSize = (info.config?.params?.vectors as any)?.size;
+
+      if (currentSize !== EMBEDDING_DIM) {
+        console.log(`Dimension mismatch in collection "${SESSIONS_COLLECTION}" (current: ${currentSize}, expected: ${EMBEDDING_DIM}). Recreating collection...`);
+        await qdrant.deleteCollection(SESSIONS_COLLECTION);
+        await qdrant.createCollection(SESSIONS_COLLECTION, {
+          vectors: { size: EMBEDDING_DIM, distance: "Cosine" },
+        });
+        console.log(`Recreated Qdrant collection "${SESSIONS_COLLECTION}" with dimension ${EMBEDDING_DIM}`);
+      } else {
+        console.log(`Qdrant collection "${SESSIONS_COLLECTION}" already exists with correct dimension`);
+      }
+    } else {
+      await qdrant.createCollection(SESSIONS_COLLECTION, {
+        vectors: { size: EMBEDDING_DIM, distance: "Cosine" },
+      });
+      console.log(`Created Qdrant collection "${SESSIONS_COLLECTION}" with dimension ${EMBEDDING_DIM}`);
+    }
+  } catch (error) {
+    console.error("Failed to ensure session collection in Qdrant:", error);
+    throw error;
+  }
+}
+
+/**
+ * Stores a session's summary and findings as a vector with metadata.
+ */
+export async function saveSessionMemory(
+  sessionId: string,
+  contractSummary: string,
+  jurisdiction: string,
+  keyFindings: string[]
+) {
+  try {
+    const vector = await getEmbedding(contractSummary);
+    const id = uuidv4();
+    const payload = {
+      sessionId,
+      contractSummary,
+      jurisdiction,
+      keyFindings,
+      timestamp: Date.now(),
+    };
+    await qdrant.upsert(SESSIONS_COLLECTION, {
+      points: [{ id, vector, payload }],
+    });
+    console.log(`Saved session memory for session "${sessionId}" with ID ${id}`);
+  } catch (error) {
+    console.error(`Failed to save session memory for session "${sessionId}":`, error);
+    throw error;
+  }
+}
+
+/**
+ * Retrieves the most recent 3 sessions for a given session ID.
+ */
+export async function recallSessionMemory(sessionId: string) {
+  try {
+    const result = await qdrant.scroll(SESSIONS_COLLECTION, {
+      filter: {
+        must: [{ key: "sessionId", match: { value: sessionId } }],
+      },
+      limit: 10,
+      with_payload: true,
+    });
+
+    // Sort by timestamp descending and return top 3
+    return result.points
+      .map((p) => p.payload)
+      .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0))
+      .slice(0, 3);
+  } catch (error) {
+    console.error(`Failed to recall session memory for session "${sessionId}":`, error);
     throw error;
   }
 }
