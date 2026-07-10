@@ -1,0 +1,335 @@
+/* ── Risk Analytics Dashboard Page Styles ── */
+.analytics-page-container {
+  min-height: 100vh;
+  background: #0a0915;
+  color: #f1f1f7;
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  padding: 85px 24px 60px 24px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Background elements */
+.analytics-page-container::before {
+  content: "";
+  position: fixed;
+  top: -10%;
+  right: -5%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(123, 97, 255, 0.12) 0%, rgba(123, 97, 255, 0) 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.analytics-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: rgba(10, 9, 21, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 32px;
+  z-index: 100;
+}
+
+.analytics-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── KPI GRID ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #72728c;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.kpi-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -1px;
+}
+
+.kpi-desc {
+  font-size: 12px;
+  color: #b5b5cc;
+}
+
+.warning-color { color: #ffb938; }
+.danger-color { color: #ff4d4d; }
+.success-color { color: #00e676; }
+
+/* ── RECALIBRATE BANNER ── */
+.recalibrate-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  border-left: 4px solid #7b61ff;
+  flex-wrap: wrap;
+}
+
+.banner-left {
+  flex: 1;
+  min-width: 300px;
+}
+
+.banner-left h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 6px 0;
+}
+
+.banner-left p {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #b5b5cc;
+  margin: 0 0 16px 0;
+}
+
+.suggestions-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.suggestion-badge {
+  background: rgba(123, 97, 255, 0.12);
+  border: 1px solid rgba(123, 97, 255, 0.25);
+  color: #a291ff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.no-suggestion-text {
+  font-size: 12px;
+  color: #72728c;
+  margin: 0;
+}
+
+.banner-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.recalibrate-btn {
+  background: linear-gradient(135deg, #7b61ff 0%, #6347f5 100%);
+  color: #ffffff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(123, 97, 255, 0.35);
+  transition: all 0.25s ease;
+}
+
+.recalibrate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(123, 97, 255, 0.5);
+  filter: brightness(1.1);
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.recalibrate-alert {
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.alert--success {
+  background: rgba(0, 230, 118, 0.1);
+  border: 1px solid rgba(0, 230, 118, 0.2);
+  color: #00e676;
+}
+
+.alert--error {
+  background: rgba(255, 77, 77, 0.1);
+  border: 1px solid rgba(255, 77, 77, 0.2);
+  color: #ff4d4d;
+}
+
+/* ── CHARTS ROW ── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.card-icon {
+  color: #7b61ff;
+}
+
+.card-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.chart-container {
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-data-display {
+  font-size: 13px;
+  color: #72728c;
+}
+
+/* ── OVERRIDES TABLE ── */
+.overrides-table-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.overrides-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.overrides-table th {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #72728c;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+}
+
+.overrides-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #e1e1f0;
+  line-height: 1.5;
+  vertical-align: top;
+}
+
+.overrides-table tr:hover {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.category-tag {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.status-pill {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.status-pill--edited {
+  background: rgba(123, 97, 255, 0.15);
+  color: #a291ff;
+  border: 1px solid rgba(123, 97, 255, 0.25);
+}
+
+.status-pill--rejected {
+  background: rgba(255, 77, 77, 0.15);
+  color: #ff4d4d;
+  border: 1px solid rgba(255, 77, 77, 0.25);
+}
+
+.clause-text-cell {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  color: #b5b5cc;
+}
+
+.highlight-cell {
+  color: #ffffff;
+}
+
+.reasoning-cell {
+  max-width: 200px;
+  color: #ffb938;
+}
