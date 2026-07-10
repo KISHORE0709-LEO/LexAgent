@@ -1,20 +1,17 @@
-import { qdrant, COLLECTION, ensureCollection, getEmbedding } from "../lib/qdrant.js";
+import {
+  qdrant,
+  COLLECTION,
+  ensureCollection,
+  getEmbedding,
+  POLICIES_COLLECTION,
+  ensurePolicyCollection,
+  generateDeterministicUUID,
+} from "../lib/qdrant.js";
 import { PRECEDENTS } from "./precedents.js";
-import * as crypto from "crypto";
-
-function generateDeterministicUUID(text: string): string {
-  const hash = crypto.createHash("md5").update(text).digest("hex");
-  // Formats to 8-4-4-4-12 UUID layout
-  return [
-    hash.substring(0, 8),
-    hash.substring(8, 12),
-    hash.substring(12, 16),
-    hash.substring(16, 20),
-    hash.substring(20, 32)
-  ].join("-");
-}
+import { POLICIES } from "./policies.js";
 
 async function main() {
+  // ---------- 1. Seed Precedents ----------
   try {
     console.log(`Deleting existing Qdrant collection "${COLLECTION}" to start fresh...`);
     await qdrant.deleteCollection(COLLECTION);
@@ -23,29 +20,27 @@ async function main() {
     console.log(`Collection "${COLLECTION}" did not exist or could not be deleted, proceeding to recreate.`);
   }
 
-  console.log("Re-creating Qdrant collection...");
+  console.log("Re-creating Qdrant precedents collection...");
   await ensureCollection();
 
   const totalPrecedents = PRECEDENTS.length;
   console.log(`Seeding ${totalPrecedents} precedent clauses in batches of 20...`);
   
   const batchSize = 20;
-  let totalInserted = 0;
+  let totalPrecedentsInserted = 0;
 
   for (let i = 0; i < totalPrecedents; i += batchSize) {
     const batch = PRECEDENTS.slice(i, i + batchSize);
-    console.log(`Processing batch of ${batch.length} clauses (${i + 1} to ${Math.min(i + batchSize, totalPrecedents)})...`);
+    console.log(`Processing precedents batch of ${batch.length} clauses (${i + 1} to ${Math.min(i + batchSize, totalPrecedents)})...`);
 
-    // Map each clause in the batch to a Qdrant point with a deterministic ID and real embedding
     const points = await Promise.all(
       batch.map(async (clause) => {
         const id = generateDeterministicUUID(clause.clauseText);
         const vector = await getEmbedding(clause.clauseText);
         
-        // Normalize payload jurisdiction to lowercase
         const normalizedPayload = {
           ...clause,
-          id, // use the generated deterministic ID
+          id,
           jurisdiction: clause.jurisdiction.toLowerCase(),
         };
 
@@ -57,13 +52,59 @@ async function main() {
       })
     );
 
-    // Upsert the batch of points
     await qdrant.upsert(COLLECTION, { points });
-    totalInserted += points.length;
-    console.log(`  Successfully batch-upserted ${points.length} clauses.`);
+    totalPrecedentsInserted += points.length;
+    console.log(`  Successfully batch-upserted ${points.length} precedents.`);
   }
 
-  console.log(`Done. Successfully seeded a total of ${totalInserted} clauses to Qdrant.`);
+  console.log(`Done. Successfully seeded a total of ${totalPrecedentsInserted} precedents to Qdrant.\n`);
+
+  // ---------- 2. Seed Playbook Policies ----------
+  try {
+    console.log(`Deleting existing Qdrant collection "${POLICIES_COLLECTION}" to start fresh...`);
+    await qdrant.deleteCollection(POLICIES_COLLECTION);
+    console.log(`Successfully deleted collection "${POLICIES_COLLECTION}"`);
+  } catch (err) {
+    console.log(`Collection "${POLICIES_COLLECTION}" did not exist or could not be deleted, proceeding to recreate.`);
+  }
+
+  console.log("Re-creating Qdrant policies collection...");
+  await ensurePolicyCollection();
+
+  const totalPolicies = POLICIES.length;
+  console.log(`Seeding ${totalPolicies} playbook policies in batches of 20...`);
+  
+  let totalPoliciesInserted = 0;
+
+  for (let i = 0; i < totalPolicies; i += batchSize) {
+    const batch = POLICIES.slice(i, i + batchSize);
+    console.log(`Processing policies batch of ${batch.length} items (${i + 1} to ${Math.min(i + batchSize, totalPolicies)})...`);
+
+    const points = await Promise.all(
+      batch.map(async (policy) => {
+        const vector = await getEmbedding(policy.category + " - " + policy.policyText);
+        
+        const normalizedPayload = {
+          ...policy,
+          jurisdiction: policy.jurisdiction.toLowerCase(),
+          category: policy.category.toLowerCase(),
+        };
+
+        const pointId = generateDeterministicUUID(policy.id);
+        return {
+          id: pointId,
+          vector,
+          payload: normalizedPayload,
+        };
+      })
+    );
+
+    await qdrant.upsert(POLICIES_COLLECTION, { points });
+    totalPoliciesInserted += points.length;
+    console.log(`  Successfully batch-upserted ${points.length} policies.`);
+  }
+
+  console.log(`Done. Successfully seeded a total of ${totalPoliciesInserted} playbook policies to Qdrant.`);
 }
 
 main().catch((err) => {
