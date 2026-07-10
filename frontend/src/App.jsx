@@ -34,7 +34,20 @@ const GlobalBackground = () => {
 };
 
 const ProtectedRoute = ({ children }) => {
-  // TEMP: bypass auth check for frontend dev
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100vw', background: '#0a0915', color: '#fff', fontFamily: 'system-ui' }}>
+        <div style={{ fontSize: '16px', fontWeight: '500', letterSpacing: '1px' }}>Verifying credentials...</div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
   return children;
 };
 
