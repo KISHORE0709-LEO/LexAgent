@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, updateProfile } from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
 import './AuthPage.css';
-
 
 const AuthPage = () => {
   const [authMode, setAuthMode] = useState('signin');
@@ -21,15 +22,60 @@ const AuthPage = () => {
     if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: '' });
   };
 
-  const handleGoogleSignIn = () => {
-    // TEMP: bypass auth for frontend dev — navigate directly
-    navigate('/dashboard');
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setErrors({});
+    try {
+      await signInWithPopup(auth, googleProvider);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error("Google sign in error", error);
+      setErrors({ google: error.message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TEMP: bypass auth for frontend dev — navigate directly
-    navigate('/dashboard');
+    setIsLoading(true);
+    setErrors({});
+
+    const { fullName, email, password } = formData;
+    
+    // Basic validation
+    const validationErrors = {};
+    if (authMode === 'signup' && !fullName.trim()) {
+      validationErrors.fullName = 'Full name is required';
+    }
+    if (!email.trim()) {
+      validationErrors.email = 'Email is required';
+    }
+    if (!password.trim()) {
+      validationErrors.password = 'Password is required';
+    }
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      if (authMode === 'signup') {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, {
+          displayName: fullName
+        });
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      navigate('/dashboard');
+    } catch (error) {
+      console.error("Auth error", error);
+      setErrors({ auth: error.message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
