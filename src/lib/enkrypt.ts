@@ -54,7 +54,7 @@ export async function inputGuard(text: string): Promise<GuardResult> {
       if (raw.summary?.injection_attack === 1) reasons.push("prompt injection detected");
       if (raw.summary?.toxicity === 1) reasons.push("toxic content detected");
       if (raw.summary?.nsfw === 1) reasons.push("nsfw content detected");
-      if (raw.summary?.pii === 1) reasons.push("pii detected");
+      if (raw.summary?.pii === 1) reasons.push("PII detected");
     } catch (error) {
       console.error("Enkrypt AI Input Guard call failed:", (error as Error).message);
     }
@@ -115,7 +115,8 @@ export async function outputGuard(
   // that never appeared anywhere in the retrieved precedent set?
   const groundingText = retrievedClauseTexts.join(" ").toLowerCase();
   const draftLower = draftText.toLowerCase();
-  const suspiciousPhrases = draftText.match(/\b(?:v\.|section \d+|§\s?\d+|statute)\b[^.]{0,60}/gi) || [];
+  const suspiciousPhrases =
+    draftText.match(/\b(?:[A-Z][a-zA-Z]*\s+(?:v\.|vs\.)\s+[A-Z][a-zA-Z]*|U\.S\.C\.\s+§\s+\d+|v\.|section \d+|§\s?\d+|statute)\b[^.]{0,60}/gi) || [];
   const unsupported = suspiciousPhrases.filter(
     (phrase) => !groundingText.includes(phrase.toLowerCase().slice(0, 15))
   );
