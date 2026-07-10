@@ -13,6 +13,7 @@ import MandamusGuide from './components/MandamusGuide';
 import HowItWorksPage from './pages/HowItWorksPage';
 import AboutPage from './pages/AboutPage';
 import ManualReviewPortal from './pages/ManualReviewPortal';
+import SeniorPartnerSignoff from './pages/SeniorPartnerSignoff';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { MandamusProvider } from './context/MandamusContext';
 import { HistoryProvider } from './context/HistoryContext';
@@ -86,6 +87,11 @@ function App() {
                 <Route path="/manual-review" element={
                   <ProtectedRoute>
                     <ManualReviewPortal />
+                  </ProtectedRoute>
+                } />
+                <Route path="/partner-signoff" element={
+                  <ProtectedRoute>
+                    <SeniorPartnerSignoff />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<Navigate to="/" />} />

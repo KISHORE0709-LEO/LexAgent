@@ -112,7 +112,46 @@ export default function ManualReviewPortal() {
           <Scale size={20} className="header-icon" />
           <h1>Manual Review Portal</h1>
         </div>
-        <div className="header-actions">
+        <div className="header-actions" style={{ display: 'flex', gap: '12px' }}>
+          <button 
+            type="button"
+            className="signoff-portal-btn" 
+            onClick={() => {
+              const escalatedList = clauses
+                .map((c, idx) => {
+                  const hasDraftEdit = edits[idx] !== undefined;
+                  const currentRevised = hasDraftEdit ? edits[idx] : c.revisedClause;
+                  return { 
+                    ...c, 
+                    originalIdx: idx, 
+                    isEscalated: escalated[idx],
+                    revisedClause: currentRevised,
+                  };
+                })
+                .filter(c => c.isEscalated || (c.riskLevel === 'high' && escalated[c.originalIdx]));
+              navigate('/partner-signoff', { 
+                state: { 
+                  escalatedClauses: escalatedList, 
+                  court_name: analysisData.court_name, 
+                  confidence_score: analysisData.confidence_score 
+                } 
+              });
+            }}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255, 77, 77, 0.4)',
+              color: '#ff4d4d',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            id="btn-go-to-signoff-portal"
+          >
+            Senior Partner Sign-off
+          </button>
           <button className="save-btn" onClick={handleSave} id="btn-save-manual-review">
             Save Review
           </button>

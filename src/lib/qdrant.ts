@@ -353,3 +353,75 @@ export async function searchPoliciesByCategory(
     throw error;
   }
 }
+
+// ---------- Reviewer Knowledge Collection ----------
+export const REVIEWER_KNOWLEDGE_COLLECTION = "legal_reviewer_knowledge";
+
+/**
+ * Ensures the reviewer knowledge collection exists in Qdrant.
+ */
+export async function ensureReviewerKnowledgeCollection() {
+  try {
+    const collections = await qdrant.getCollections();
+    const exists = collections.collections.some((c) => c.name === REVIEWER_KNOWLEDGE_COLLECTION);
+
+    if (exists) {
+      // Check if dimension matches
+      const info = await qdrant.getCollection(REVIEWER_KNOWLEDGE_COLLECTION);
+      const currentSize = (info.config?.params?.vectors as any)?.size;
+
+      if (currentSize !== EMBEDDING_DIM) {
+        console.log(`Dimension mismatch in collection "${REVIEWER_KNOWLEDGE_COLLECTION}" (current: ${currentSize}, expected: ${EMBEDDING_DIM}). Recreating collection...`);
+        await qdrant.deleteCollection(REVIEWER_KNOWLEDGE_COLLECTION);
+        await qdrant.createCollection(REVIEWER_KNOWLEDGE_COLLECTION, {
+          vectors: { size: EMBEDDING_DIM, distance: "Cosine" },
+        });
+        console.log(`Recreated Qdrant collection "${REVIEWER_KNOWLEDGE_COLLECTION}" with dimension ${EMBEDDING_DIM}`);
+      } else {
+        console.log(`Qdrant collection "${REVIEWER_KNOWLEDGE_COLLECTION}" already exists with correct dimension`);
+      }
+    } else {
+      await qdrant.createCollection(REVIEWER_KNOWLEDGE_COLLECTION, {
+        vectors: { size: EMBEDDING_DIM, distance: "Cosine" },
+      });
+      console.log(`Created Qdrant collection "${REVIEWER_KNOWLEDGE_COLLECTION}" with dimension ${EMBEDDING_DIM}`);
+    }
+  } catch (error) {
+    console.error("Failed to ensure reviewer knowledge collection in Qdrant:", error);
+    throw error;
+  }
+}
+
+/**
+ * Saves an approved/rejected clause to the Qdrant Reviewer Knowledge DB.
+ */
+export async function saveApprovedClause(
+  clauseId: string,
+  originalText: string,
+  revisedText: string,
+  category: string,
+  signature: string,
+  status: "approved" | "rejected" | "edited"
+) {
+  try {
+    const textToEmbed = revisedText || originalText;
+    const vector = await getEmbedding(textToEmbed);
+    const id = generateDeterministicUUID(clauseId + "-" + Date.now() + "-" + Math.random());
+    const payload = {
+      clauseId,
+      originalText,
+      revisedText,
+      category,
+      signature,
+      status,
+      timestamp: Date.now(),
+    };
+    await qdrant.upsert(REVIEWER_KNOWLEDGE_COLLECTION, {
+      points: [{ id, vector, payload }],
+    });
+    console.log(`Saved approved clause to Reviewer Knowledge DB: ${id} (status: ${status})`);
+  } catch (error) {
+    console.error("Failed to save approved clause to Reviewer Knowledge DB:", error);
+    throw error;
+  }
+}

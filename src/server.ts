@@ -7,7 +7,13 @@ const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 import { stream } from "hono/streaming";
 import { legalDocumentWorkflow } from "./mastra/workflows/legalWorkflow.js";
-import { ensureCollection, ensureSessionCollection, ensurePolicyCollection } from "./lib/qdrant.js";
+import {
+  ensureCollection,
+  ensureSessionCollection,
+  ensurePolicyCollection,
+  ensureReviewerKnowledgeCollection,
+  saveApprovedClause,
+} from "./lib/qdrant.js";
 
 const app = new Hono();
 
@@ -151,6 +157,30 @@ function transformToMandamusFormat(workflowResult: any) {
   };
 }
 
+app.post("/api/approve", async (c) => {
+  try {
+    const body = await c.req.json();
+    const clauses = body.clauses;
+    if (!clauses || !Array.isArray(clauses)) {
+      return c.json({ error: "Invalid body. Expected 'clauses' array." }, 400);
+    }
+    for (const clause of clauses) {
+      await saveApprovedClause(
+        clause.id || `clause-${Math.random()}`,
+        clause.originalClause || "",
+        clause.revisedClause || "",
+        clause.category || "General",
+        clause.signature || "Anonymous",
+        clause.status || "approved"
+      );
+    }
+    return c.json({ success: true, message: "Clauses saved to Reviewer Knowledge DB." });
+  } catch (err) {
+    console.error("Error in /api/approve:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port }, async () => {
   console.log(`Legal Agent Backend running at http://localhost:${port}`);
@@ -158,6 +188,7 @@ serve({ fetch: app.fetch, port }, async () => {
     await ensureCollection();
     await ensureSessionCollection();
     await ensurePolicyCollection();
+    await ensureReviewerKnowledgeCollection();
     console.log("Qdrant collections verified on startup.");
   } catch (error) {
     console.error("Failed to initialize Qdrant collections on startup:", error);
