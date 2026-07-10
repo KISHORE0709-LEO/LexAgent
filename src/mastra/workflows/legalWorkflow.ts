@@ -2,7 +2,7 @@ import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import { inputGuard, outputGuard } from "../../lib/enkrypt.js";
 import { searchClausesByJurisdiction } from "../../lib/qdrant.js";
-import { clauseAnalysisAgent, draftingAgent, jurisdictionAgent } from "../agents/legalAgents.js";
+import { clauseAnalysisAgent, draftingAgent, jurisdictionAgent, documentAnalysisAgent } from "../agents/legalAgents.js";
 
 // ---------- Step 1: Enkrypt Input Guard ----------
 // Runs BEFORE any LLM sees the document. Blocks prompt injection, PII, toxicity.
@@ -202,26 +202,75 @@ const draftAndGuardStep = createStep({
   },
 });
 
+// ---------- Step 5: Document Level Summary (For Mandamus UI) ----------
+const documentAnalysisStep = createStep({
+  id: "document-analysis",
+  inputSchema: z.object({
+    contractText: z.string(),
+    jurisdiction: z.string(),
+    results: z.array(z.any()), // From draftAndGuardStep
+  }),
+  outputSchema: z.object({
+    jurisdiction: z.string(),
+    results: z.array(z.any()),
+    fullAnalysis: z.object({
+      caseId: z.string(),
+      partyA: z.string(),
+      partyB: z.string(),
+      summary: z.string(),
+      facts: z.array(z.string()),
+      legalQuestions: z.array(z.string()),
+    }),
+  }),
+  execute: async ({ inputData }) => {
+    const analysisResponse = await documentAnalysisAgent.generate(
+      `Contract text:\n\n${inputData.contractText}`
+    );
+    let parsed: any;
+    try {
+      parsed = JSON.parse(analysisResponse.text);
+    } catch {
+      parsed = {
+        caseId: "DOC-ERR",
+        partyA: "Unknown",
+        partyB: "Unknown",
+        summary: analysisResponse.text.substring(0, 200),
+        facts: ["Could not parse response"],
+        legalQuestions: [],
+      };
+    }
+    return {
+      jurisdiction: inputData.jurisdiction,
+      results: inputData.results,
+      fullAnalysis: parsed,
+    };
+  },
+});
+
 export const legalDocumentWorkflow = createWorkflow({
   id: "legal-document-workflow",
   inputSchema: z.object({ contractText: z.string() }),
   outputSchema: z.object({
     jurisdiction: z.string(),
-    results: z.array(
-      z.object({
-        originalClause: z.string(),
-        riskLevel: z.enum(["low", "medium", "high"]),
-        revisedClause: z.string().nullable(),
-        rationale: z.string().nullable(),
-        guardPassed: z.boolean(),
-        guardReasons: z.array(z.string()),
-        attempts: z.number(),
-      })
-    ),
+    results: z.array(z.any()),
+    fullAnalysis: z.object({
+      caseId: z.string(),
+      partyA: z.string(),
+      partyB: z.string(),
+      summary: z.string(),
+      facts: z.array(z.string()),
+      legalQuestions: z.array(z.string()),
+    }),
   }),
 })
   .then(inputGuardStep)
   .then(jurisdictionStep)
   .then(clauseAnalysisStep)
   .then(draftAndGuardStep)
+  .then(documentAnalysisStep, {
+    // We map outputs from previous steps as input to this step
+    contractText: { step: "input-guard", path: "contractText" },
+    jurisdiction: { step: "draft-and-guard", path: "jurisdiction" },
+    results: { step: "draft-and-guard", path: "results" },
+  })
   .commit();

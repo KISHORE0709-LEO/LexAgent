@@ -1,27 +1,31 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import "dotenv/config";
 
 export const COLLECTION = "legal_clauses";
-const EMBEDDING_MODEL = "text-embedding-004";
-const EMBEDDING_DIM = 768; // Google text-embedding-004 outputs 768 dimensions
+const EMBEDDING_DIM = 768;
 
 export const qdrant = new QdrantClient({
   url: process.env.QDRANT_URL,
   apiKey: process.env.QDRANT_API_KEY,
 });
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
-
 /**
- * Turns text into a vector using Google's free text-embedding-004 model.
- * This is what lets Qdrant do "semantic" search — it compares meaning,
- * not just exact keywords. Google AI Studio provides this for free.
+ * Turns text into a vector. (Mocked for MVP to bypass Google API key restrictions on embeddings)
+ * Generates a deterministic 768-dim vector based on the text length and character codes.
  */
 export async function getEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
-  const result = await model.embedContent(text);
-  return result.embedding.values;
+  const dim = 768;
+  const vector = new Array(dim).fill(0);
+  
+  // Create a somewhat unique but deterministic vector for this text
+  for (let i = 0; i < text.length; i++) {
+    const charCode = text.charCodeAt(i);
+    vector[i % dim] += charCode / 1000.0;
+  }
+  
+  // Normalize
+  const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0)) || 1;
+  return vector.map(v => v / magnitude);
 }
 
 /**

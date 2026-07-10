@@ -1,0 +1,139 @@
+.footer-section {
+  background-color: transparent;
+  position: relative;
+  padding: 80px 5% 40px 5%;
+  color: var(--text-white);
+  font-family: 'Inter', sans-serif;
+}
+
+.footer-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 5%;
+  width: 90%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(214, 40, 40, 0.6), transparent);
+  box-shadow: 0 0 15px rgba(214, 40, 40, 0.8), 0 0 30px rgba(214, 40, 40, 0.4);
+  opacity: 0.6;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 60px;
+  margin-bottom: 60px;
+}
+
+.footer-brand-col {
+  flex: 2;
+  min-width: 300px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.footer-logo-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.footer-logo-text {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.footer-desc {
+  color: var(--text-grey);
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 400px;
+  margin-bottom: 24px;
+}
+
+.footer-hackathon-credits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.credit-badge {
+  display: inline-block;
+  background-color: rgba(214, 40, 40, 0.1);
+  color: var(--primary-red);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  width: fit-content;
+  border: 1px solid rgba(214, 40, 40, 0.3);
+}
+
+.credit-team {
+  font-size: 13px;
+  color: var(--text-grey);
+  font-weight: 500;
+}
+
+.footer-links-col {
+  flex: 1;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer-heading {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-white);
+  margin-bottom: 16px;
+}
+
+.footer-links-col a {
+  color: var(--text-grey);
+  text-decoration: none;
+  font-size: 16px;
+  transition: color 0.2s ease;
+}
+
+.footer-links-col a:hover {
+  color: var(--primary-red);
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-grey);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .footer-grid {
+    flex-direction: column;
+    gap: 40px;
+  }
+  
+  .footer-desc {
+    max-width: 100%;
+  }
+  
+  .footer-bottom {
+    font-size: 12px;
+    padding-top: 24px;
+  }
+}

@@ -1,0 +1,122 @@
+.jbc-container {
+  background: #0d0d0d;
+  border: 1px solid #e02020;
+  padding: 24px 30px;
+  margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(224, 32, 32, 0.05);
+}
+
+.jbc-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  background: #e02020;
+}
+
+.jbc-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: #e02020;
+  letter-spacing: 0.15em;
+  margin-bottom: 20px;
+}
+
+.jbc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.jbc-input-group {
+  display: flex;
+  gap: 12px;
+}
+
+.jbc-input {
+  flex: 1;
+  background: #000;
+  border: 1px solid #222;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  padding: 14px 20px;
+  outline: none;
+  transition: all 0.2s;
+  text-transform: lowercase;
+}
+
+.jbc-input:focus {
+  border-color: #fff;
+  background: rgba(255,255,255,0.03);
+}
+
+.jbc-input-error {
+  border-color: #e02020 !important;
+  background: rgba(224, 32, 32, 0.05) !important;
+}
+
+.jbc-input::placeholder {
+  color: #333;
+  letter-spacing: 0.1em;
+}
+
+.jbc-submit-btn {
+  background: #fff;
+  border: none;
+  color: #000;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  padding: 0 35px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.jbc-submit-btn:hover {
+  background: #e02020;
+  color: #fff;
+}
+
+.jbc-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: #e02020;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.jbc-hint {
+  font-size: 0.65rem;
+  color: #444;
+  text-align: left;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+}
+
+/* Pulsing Indicator */
+.jbc-header::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #e02020;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+

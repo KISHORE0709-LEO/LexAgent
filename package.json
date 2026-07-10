@@ -16,8 +16,10 @@
     "@hono/node-server": "latest",
     "@mastra/core": "latest",
     "@qdrant/js-client-rest": "latest",
+    "ai": "^6.0.222",
     "dotenv": "latest",
     "hono": "latest",
+    "pdf-parse": "^2.4.5",
     "uuid": "latest",
     "zod": "latest"
   },

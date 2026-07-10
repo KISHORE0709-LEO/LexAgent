@@ -1,0 +1,47 @@
+.metrics-section {
+  background-color: var(--bg-black);
+  color: var(--text-white);
+  padding: 120px 0;
+}
+
+.metrics-grid {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 40px;
+}
+
+.metric-item {
+  text-align: center;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.metric-item.animate-up {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.metric-number {
+  color: var(--primary-red);
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.metric-label {
+  color: var(--text-grey);
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 768px) {
+  .metrics-grid {
+    flex-direction: column;
+    align-items: center;
+    gap: 60px;
+  }
+}

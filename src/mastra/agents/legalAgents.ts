@@ -67,3 +67,23 @@ references either state. If no governing law clause is found, set jurisdiction
 to null.`,
   model: google("gemini-1.5-flash"),
 });
+
+/**
+ * Parses the overall contract to extract high-level summary and entities.
+ * This satisfies the UI's need for a rich Mandamus-style dashboard.
+ */
+export const documentAnalysisAgent = new Agent({
+  id: "document-analysis-agent",
+  name: "document-analysis-agent",
+  instructions: `Read the contract text and extract the key information.
+Respond ONLY as strict JSON with this exact structure:
+{
+  "caseId": "string (e.g. A unique looking ID from the header, or generate a random one)",
+  "partyA": "string (The petitioner/first party)",
+  "partyB": "string (The respondent/second party)",
+  "summary": "string (A plain language summary of what this contract is about)",
+  "facts": ["string", "string"] (Key facts extracted from the contract),
+  "legalQuestions": ["string", "string"] (What are the core legal implications or questions arising from this contract?)
+}`,
+  model: google("gemini-1.5-flash"),
+});
