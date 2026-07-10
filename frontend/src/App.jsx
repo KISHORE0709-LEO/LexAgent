@@ -19,9 +19,9 @@ import { HistoryProvider } from './context/HistoryContext';
 
 const GlobalBackground = () => {
   const location = useLocation();
-  const isFeatureRoute = ['/dashboard', '/public-dashboard', '/advisor', '/modern-advisor', '/vault', '/admin-dashboard', '/lawyer-dashboard', '/login'].some(path => location.pathname.startsWith(path));
+  const isHidden = ['/public-dashboard', '/advisor', '/modern-advisor', '/vault', '/admin-dashboard', '/lawyer-dashboard'].some(path => location.pathname.startsWith(path));
   
-  if (isFeatureRoute) return null;
+  if (isHidden) return null;
   
   return (
     <div className="dynamic-bg" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0 }}>
