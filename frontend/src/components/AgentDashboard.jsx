@@ -238,7 +238,7 @@ export default function AgentDashboard() {
       {/* SIDEBAR */}
       <div className="agent-sidebar">
         <button className="new-chat-btn" onClick={() => { setMessages([]); setInputText(""); setAttachedFile(null); }}>
-          <Plus size={18} /> New Document Analysis
+          <Plus size={18} /> New Analysis
         </button>
         
         <div className="history-section">
