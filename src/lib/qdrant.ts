@@ -355,7 +355,7 @@ export async function searchPoliciesByCategory(
 }
 
 // ---------- Reviewer Knowledge Collection ----------
-export const REVIEWER_KNOWLEDGE_COLLECTION = "legal_reviewer_knowledge";
+export const REVIEWER_KNOWLEDGE_COLLECTION = "reviewer_knowledge";
 
 /**
  * Ensures the reviewer knowledge collection exists in Qdrant.
@@ -399,8 +399,9 @@ export async function saveApprovedClause(
   clauseId: string,
   originalText: string,
   revisedText: string,
+  jurisdiction: string,
   category: string,
-  signature: string,
+  partnerReasoning: string,
   status: "approved" | "rejected" | "edited"
 ) {
   try {
@@ -408,11 +409,13 @@ export async function saveApprovedClause(
     const vector = await getEmbedding(textToEmbed);
     const id = generateDeterministicUUID(clauseId + "-" + Date.now() + "-" + Math.random());
     const payload = {
+      id,
       clauseId,
-      originalText,
-      revisedText,
-      category,
-      signature,
+      original_clause: originalText,
+      approved_clause: revisedText,
+      jurisdiction: jurisdiction.toLowerCase(),
+      category: category.toLowerCase(),
+      partner_reasoning: partnerReasoning,
       status,
       timestamp: Date.now(),
     };

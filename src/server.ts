@@ -14,6 +14,7 @@ import {
   ensureReviewerKnowledgeCollection,
   saveApprovedClause,
 } from "./lib/qdrant.js";
+import { analyzeRiskOverrides } from "./lib/riskAnalytics.js";
 
 const app = new Hono();
 
@@ -169,14 +170,25 @@ app.post("/api/approve", async (c) => {
         clause.id || `clause-${Math.random()}`,
         clause.originalClause || "",
         clause.revisedClause || "",
+        clause.jurisdiction || "Federal/General",
         clause.category || "General",
-        clause.signature || "Anonymous",
+        clause.partner_reasoning || clause.signature || "Approved by Partner",
         clause.status || "approved"
       );
     }
     return c.json({ success: true, message: "Clauses saved to Reviewer Knowledge DB." });
   } catch (err) {
     console.error("Error in /api/approve:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.get("/api/analytics", async (c) => {
+  try {
+    const analysis = await analyzeRiskOverrides();
+    return c.json(analysis);
+  } catch (err) {
+    console.error("Error in /api/analytics:", err);
     return c.json({ error: (err as Error).message }, 500);
   }
 });
