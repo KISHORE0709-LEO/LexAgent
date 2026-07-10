@@ -276,6 +276,14 @@ export default function AgentDashboard() {
   return (
     <div className={`lex-layout ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
 
+      {/* ── Same animated background as homepage ── */}
+      <div className="lex-bg">
+        <div className="lex-orb lex-orb-1" />
+        <div className="lex-orb lex-orb-2" />
+        <div className="lex-orb lex-orb-3" />
+        <div className="lex-grid" />
+      </div>
+
       {/* ── SIDEBAR ── */}
       <aside className="lex-sidebar">
         <div className="sidebar-top">
