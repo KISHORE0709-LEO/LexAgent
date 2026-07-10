@@ -21,10 +21,10 @@ const guideMessages = {
     next: "Explore our Neural Architecture."
   },
   // DASHBOARD CONTEXTS
-  summariser: {
-    title: "NEURAL_SUMMARISER",
-    text: "Welcome! Upload your case PDF here. My neural engine will distill it into a structured brief in under 60 seconds. Efficiency is justice.",
-    next: "Once summarized, we'll find matching precedents."
+  agent: {
+    title: "NEURAL_AGENT",
+    text: "Welcome! Upload your case PDF here. My neural engine will distill it into a structured brief and evaluate clause risks in under 60 seconds.",
+    next: "Interact with the Legal Agent."
   },
   precedent: {
     title: "PRECEDENT_FINDER",
@@ -62,7 +62,7 @@ const MandamusGuide = ({ activeFeature }) => {
 
     if (path === '/login') context = 'login';
     else if (path === '/about') context = 'about';
-    else if (path === '/dashboard') context = activeFeature || 'summariser';
+    else if (path === '/dashboard') context = activeFeature || 'agent';
 
     if (guideMessages[context]) {
       setMessage(guideMessages[context]);

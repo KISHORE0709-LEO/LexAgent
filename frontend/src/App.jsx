@@ -7,11 +7,9 @@ import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
 import Footer from './components/Footer';
 import AuthPage from './components/AuthPage';
-import Summarizer from './components/Summarizer';
-import PrecedentFinder from './components/PrecedentFinder';
+import AgentDashboard from './components/AgentDashboard';
 import ProfilePage from './components/ProfilePage';
 import MandamusGuide from './components/MandamusGuide';
-import FeaturesNavbar from './components/FeaturesNavbar';
 import HowItWorksPage from './pages/HowItWorksPage';
 import AboutPage from './pages/AboutPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -51,31 +49,7 @@ const LandingPage = () => (
   </>
 );
 
-const Dashboard = ({ activeFeature, setActiveFeature }) => {
-  const renderContent = () => {
-    switch (activeFeature) {
-      case 'summariser':
-        return <Summarizer onTabChange={setActiveFeature} />;
-      case 'precedent':
-        return <PrecedentFinder onTabChange={setActiveFeature} />;
-      case 'profile':
-        return <ProfilePage />;
-      default:
-        return <Summarizer onTabChange={setActiveFeature} />;
-    }
-  };
-
-  return (
-    <div className="dashboard-container" style={{ paddingTop: '100px', minHeight: '100vh', background: '#000' }}>
-      <FeaturesNavbar onSelectFeature={setActiveFeature} activeFeature={activeFeature} />
-      {renderContent()}
-    </div>
-  );
-};
-
 function App() {
-  const [activeFeature, setActiveFeature] = React.useState('summariser');
-
   return (
     <AuthProvider>
       <HistoryProvider>
@@ -92,7 +66,7 @@ function App() {
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
-                    <Dashboard activeFeature={activeFeature} setActiveFeature={setActiveFeature} />
+                    <AgentDashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<Navigate to="/" />} />
@@ -100,7 +74,8 @@ function App() {
               </Routes>
             </div>
             
-            <MandamusGuide activeFeature={activeFeature} />
+            
+            <MandamusGuide />
           </div>
         </Router>
       </MandamusProvider>
