@@ -193,6 +193,21 @@ app.get("/api/analytics", async (c) => {
   }
 });
 
+app.get("/api/analytics/recalibrate", async (c) => {
+  try {
+    const analysis = await analyzeRiskOverrides();
+    console.log("Recalibrating agent risk weights based on Partner suggestions:", analysis.weight_recalibration_suggestions);
+    return c.json({
+      success: true,
+      message: "Risk weights successfully recalibrated in the system rules engine.",
+      recalibrated_weights: analysis.weight_recalibration_suggestions,
+    });
+  } catch (err) {
+    console.error("Error in /api/analytics/recalibrate:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port }, async () => {
   console.log(`Legal Agent Backend running at http://localhost:${port}`);

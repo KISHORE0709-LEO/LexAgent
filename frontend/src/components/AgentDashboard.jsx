@@ -340,11 +340,25 @@ export default function AgentDashboard() {
           <div className="projects-section">
             <span className="history-group-label">Projects</span>
             {MOCK_PROJECTS.map(p => (
-              <button key={p.id} className="history-item">
+              <button key={p.id} className="history-item" type="button">
                 <Folder size={14} className="history-icon" />
                 <span className="history-title">{p.name}</span>
               </button>
             ))}
+          </div>
+
+          <div className="projects-section">
+            <span className="history-group-label">System Control</span>
+            <button 
+              className="history-item" 
+              onClick={() => navigate('/risk-analytics')}
+              style={{ width: '100%', textAlign: 'left' }}
+              id="sidebar-link-risk-analytics"
+              type="button"
+            >
+              <BrainCircuit size={14} className="history-icon" style={{ color: '#7b61ff' }} />
+              <span className="history-title" style={{ fontWeight: '500' }}>Risk & Overrides Tuning</span>
+            </button>
           </div>
         </div>
 

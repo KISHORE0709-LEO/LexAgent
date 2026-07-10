@@ -14,6 +14,7 @@ import HowItWorksPage from './pages/HowItWorksPage';
 import AboutPage from './pages/AboutPage';
 import ManualReviewPortal from './pages/ManualReviewPortal';
 import SeniorPartnerSignoff from './pages/SeniorPartnerSignoff';
+import RiskAnalyticsDashboard from './pages/RiskAnalyticsDashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { MandamusProvider } from './context/MandamusContext';
 import { HistoryProvider } from './context/HistoryContext';
@@ -92,6 +93,11 @@ function App() {
                 <Route path="/partner-signoff" element={
                   <ProtectedRoute>
                     <SeniorPartnerSignoff />
+                  </ProtectedRoute>
+                } />
+                <Route path="/risk-analytics" element={
+                  <ProtectedRoute>
+                    <RiskAnalyticsDashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<Navigate to="/" />} />
