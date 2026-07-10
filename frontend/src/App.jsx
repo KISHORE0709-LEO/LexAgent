@@ -19,7 +19,7 @@ import { HistoryProvider } from './context/HistoryContext';
 
 const GlobalBackground = () => {
   const location = useLocation();
-  const isFeatureRoute = ['/dashboard', '/public-dashboard', '/advisor', '/modern-advisor', '/vault', '/admin-dashboard', '/lawyer-dashboard'].some(path => location.pathname.startsWith(path));
+  const isFeatureRoute = ['/dashboard', '/public-dashboard', '/advisor', '/modern-advisor', '/vault', '/admin-dashboard', '/lawyer-dashboard', '/login'].some(path => location.pathname.startsWith(path));
   
   if (isFeatureRoute) return null;
   
