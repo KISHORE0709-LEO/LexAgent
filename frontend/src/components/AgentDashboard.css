@@ -347,7 +347,8 @@
 .chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 4px; }
 
 .messages-list {
-  max-width: 780px;
+  max-width: 85%;
+  width: 100%;
   margin: 0 auto;
   padding: 36px 28px 12px;
   display: flex;
@@ -357,7 +358,8 @@
 
 /* ─── Welcome screen ──────────────────────────────────────── */
 .welcome-screen {
-  max-width: 620px;
+  max-width: 85%;
+  width: 100%;
   margin: 0 auto;
   padding: 100px 28px 28px;
   text-align: center;
@@ -671,7 +673,7 @@
 /* ─── Input area ──────────────────────────────────────────── */
 .input-wrapper {
   padding: 14px 28px 22px;
-  max-width: 780px;
+  max-width: 85%;
   width: 100%;
   margin: 0 auto;
   flex-shrink: 0;
