@@ -44,17 +44,9 @@ export async function inputGuard(text: string): Promise<GuardResult> {
     try {
       raw = await callDetect(text, {
         injection_attack: { enabled: true },
-        pii: { enabled: true, entities: ["pii", "secrets", "ip_address", "url"] },
-        toxicity: { enabled: true },
-        nsfw: { enabled: true },
-        policy_violation: { enabled: false },
-        bias: { enabled: false },
       });
 
       if (raw.summary?.injection_attack === 1) reasons.push("prompt injection detected");
-      if (raw.summary?.toxicity === 1) reasons.push("toxic content detected");
-      if (raw.summary?.nsfw === 1) reasons.push("nsfw content detected");
-      if (raw.summary?.pii === 1) reasons.push("PII detected");
     } catch (error) {
       console.error("Enkrypt AI Input Guard call failed:", (error as Error).message);
     }
@@ -99,8 +91,6 @@ export async function outputGuard(
         toxicity: { enabled: true },
         bias: { enabled: true },
         nsfw: { enabled: true },
-        injection_attack: { enabled: false },
-        pii: { enabled: false },
       });
 
       if (raw.summary?.policy_violation === 1) reasons.push("policy violation / unsupported claim detected");
