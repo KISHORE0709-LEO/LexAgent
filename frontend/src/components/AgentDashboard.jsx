@@ -45,11 +45,11 @@ const renderTextWithLinks = (text) => {
       }
 
       parts.push(
-        <a 
-          key={index} 
-          href={url} 
-          target="_blank" 
-          rel="noopener noreferrer" 
+        <a
+          key={index}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
           className="legal-source-link"
           style={{ color: '#ff4d4d', textDecoration: 'underline', fontWeight: '600' }}
         >
@@ -66,33 +66,33 @@ const renderTextWithLinks = (text) => {
 
     const processedParts = parts.map((part, partIdx) => {
       if (typeof part !== 'string') return part;
-      
+
       const boldRegex = /\*\*([^*]+)\*\*/g;
       const boldParts = [];
       let bLastIndex = 0;
       let bMatch;
-      
+
       while ((bMatch = boldRegex.exec(part)) !== null) {
         const [bFull, content] = bMatch;
         const bIndex = bMatch.index;
-        
+
         if (bIndex > bLastIndex) {
           boldParts.push(part.substring(bLastIndex, bIndex));
         }
-        
+
         boldParts.push(
           <strong key={bIndex} style={{ color: '#fff', fontWeight: '700' }}>
             {content}
           </strong>
         );
-        
+
         bLastIndex = boldRegex.lastIndex;
       }
-      
+
       if (bLastIndex < part.length) {
         boldParts.push(part.substring(bLastIndex));
       }
-      
+
       return boldParts.length > 0 ? boldParts : part;
     });
 
@@ -239,7 +239,7 @@ export default function AgentDashboard() {
               if (data.processing_status === 'document_summary') {
                 setProcessingStatus('Analyzing clauses...');
                 if (data.court_name) setDetectedJurisdiction(data.court_name);
-                
+
                 // Add the initial analysis card to messages list
                 setMessages(prev => {
                   // Check if card is already added to avoid duplication
@@ -258,7 +258,7 @@ export default function AgentDashboard() {
                   };
                   return [...prev, cardMsg];
                 });
-              } 
+              }
               else if (data.processing_status === 'clause_analyzed') {
                 setMessages(prev => {
                   return prev.map(msg => {
@@ -298,7 +298,7 @@ export default function AgentDashboard() {
                     return msg;
                   });
                 });
-              } 
+              }
               else {
                 const labels = {
                   uploading: 'Uploading document...',
@@ -412,9 +412,9 @@ export default function AgentDashboard() {
                 </div>
                 <div className="compliance-meter">
                   <div className="compliance-circle">
-                    <span className="compliance-circle-score" style={{ 
-                      color: (data.executive_summary?.overall_compliance_score ?? 100) >= 80 ? '#10b981' : 
-                             (data.executive_summary?.overall_compliance_score ?? 100) >= 60 ? '#fbbf24' : '#ff4d4d' 
+                    <span className="compliance-circle-score" style={{
+                      color: (data.executive_summary?.overall_compliance_score ?? 100) >= 80 ? '#10b981' :
+                        (data.executive_summary?.overall_compliance_score ?? 100) >= 60 ? '#fbbf24' : '#ff4d4d'
                     }}>
                       {data.executive_summary?.overall_compliance_score ?? '--'}%
                     </span>
@@ -461,11 +461,11 @@ export default function AgentDashboard() {
             {data.ipc_sections?.length > 0 && (
               <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <span className="exec-section-label" style={{ fontSize: '13px', marginLeft: '4px' }}>Clause-by-Clause Assessment</span>
-                
+
                 {data.ipc_sections.map((clause, idx) => {
                   const risk = clause.riskLevel?.toLowerCase() || 'low';
                   const isBlocked = !clause.guardPassed;
-                  
+
                   return (
                     <div key={idx} className={`structured-clause-card structured-clause-card--${risk}`}>
                       <div className="clause-card-header">
@@ -542,13 +542,13 @@ export default function AgentDashboard() {
                       )}
 
                       {/* Safety Guards status */}
-                      <div className="guard-status-row" style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center', 
-                        borderTop: '1px solid rgba(255,255,255,0.04)', 
-                        paddingTop: '12px', 
-                        marginTop: '4px' 
+                      <div className="guard-status-row" style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderTop: '1px solid rgba(255,255,255,0.04)',
+                        paddingTop: '12px',
+                        marginTop: '4px'
                       }}>
                         {isBlocked ? (
                           <div className="guard-status guard-status--blocked" style={{ fontSize: '12px' }}>
@@ -567,7 +567,7 @@ export default function AgentDashboard() {
             )}
 
             <div className="portal-link-container" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button 
+              <button
                 className="portal-link-btn"
                 onClick={() => navigate('/manual-review', { state: { analysisData: data } })}
                 style={{
@@ -619,7 +619,7 @@ export default function AgentDashboard() {
         <div className="sidebar-divider" />
 
         <button className="new-doc-btn" onClick={handleNewChat}>
-          <Plus size={16} /> New Document Analysis
+          <Plus size={16} /> New Analysis
         </button>
 
         <div className="sidebar-scroll">
@@ -651,8 +651,8 @@ export default function AgentDashboard() {
 
           <div className="projects-section">
             <span className="history-group-label">System Control</span>
-            <button 
-              className="history-item" 
+            <button
+              className="history-item"
               onClick={() => navigate('/risk-analytics')}
               style={{ width: '100%', textAlign: 'left' }}
               id="sidebar-link-risk-analytics"
