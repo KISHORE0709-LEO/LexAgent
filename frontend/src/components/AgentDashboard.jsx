@@ -640,7 +640,8 @@ export default function AgentDashboard() {
         </div>
 
         {/* Input bar */}
-        <div className="input-wrapper">
+        <div className="input-wrapper" style={{ position: 'relative' }}>
+          <div id="robot-portal-dock" style={{ position: 'absolute', left: '-130px', bottom: '10px', zIndex: 10 }} />
           <input
             type="file"
             ref={fileInputRef}
