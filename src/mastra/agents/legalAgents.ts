@@ -7,7 +7,7 @@ const bedrock = createAmazonBedrock({
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
-const model = bedrock("anthropic.claude-3-sonnet-20240229-v1:0");
+const model = bedrock("amazon.nova-lite-v1:0");
 
 /**
  * Reads a contract clause plus retrieved precedent clauses, and decides
@@ -18,19 +18,25 @@ const model = bedrock("anthropic.claude-3-sonnet-20240229-v1:0");
 export const clauseAnalysisAgent = new Agent({
   id: "clause-analysis-agent",
   name: "clause-analysis-agent",
-  instructions: `You are a legal clause risk analyst. You will be given:
-1. A clause from a contract under review.
+  instructions: `You are an expert legal risk analyst. You will be given:
+1. A legal clause or paragraph from a document under review.
 2. A jurisdiction.
-3. A set of precedent clauses retrieved from the same jurisdiction.
+3. A set of precedents retrieved from the same jurisdiction.
 
-Compare the contract clause against the precedents. Decide a risk level
-(low, medium, high) based on how much the clause deviates from the majority
-position of the precedents. Only cite precedents that were actually given to
-you - never invent a case name, statute, or precedent that was not provided.
-If the clause is materially different from all precedents, flag it as high risk
-and explain the specific deviation in plain English.
+Analyze the clause against the precedents. Identify any actual legal problems (e.g., missing statutory compliance, contractual ambiguity, unconscionability, or unreasonable liability shifts). Do not describe how you generated the clause. Keep AI suggestions and legal reasoning extremely concise (strictly under 150 words each). Do not copy large portions of text or excerpts. Provide meaningful explanations of why the precedent is relevant.
 
-Respond ONLY as strict JSON: { "riskLevel": "low"|"medium"|"high", "explanation": string, "deviatesFrom": string[] }`,
+Respond ONLY as a strict JSON object with this exact structure:
+{
+  "riskLevel": "low" | "medium" | "high",
+  "reason": "Identify the actual legal problem. If no issues exist, write 'No material legal concerns detected.'",
+  "impact": "The concrete legal or business consequence of this issue, or 'N/A' if low risk.",
+  "precedents": ["List of applicable laws, codes, or precedent cases. Empty array if none."],
+  "reasoning": "Concise legal reasoning (under 150 words) explaining why the precedents are relevant and how they apply.",
+  "recommendedClause": "Concise, practical clause rewrite or suggestion (under 150 words).",
+  "confidenceScore": number (e.g. 96),
+  "groundingSources": ["Specific case names, statutes, constitutional provisions, or regulations used for the analysis."],
+  "whyPrecedent": ["Brief explanation of why each cited authority is relevant (e.g., 'defines sexual harassment', 'forms basis of POSH act')."]
+}`,
   model,
 });
 
@@ -67,12 +73,11 @@ Respond ONLY as strict JSON: { "revisedClause": string, "rationale": string }`,
 export const jurisdictionAgent = new Agent({
   id: "jurisdiction-agent",
   name: "jurisdiction-agent",
-  instructions: `Read the contract text and find the governing law / jurisdiction
-clause (often titled "Governing Law" or "Jurisdiction"). Respond ONLY as strict
-JSON: { "jurisdiction": string | null, "confidence": "high"|"low" }
-Use "New York" or "California" as the jurisdiction value if the contract
-references either state. If no governing law clause is found, set jurisdiction
-to null.`,
+  instructions: `Determine the jurisdiction or governing law of the given document.
+If the document is a contract, look for the governing law / jurisdiction clause (often titled "Governing Law" or "Jurisdiction").
+If the document is a court case, judicial judgment, or lawsuit, determine the jurisdiction based on the court name, parties, or state mentioned in the header (e.g. "New York", "California", "Rajasthan", "Delhi", "India", etc.).
+Respond ONLY as strict JSON: { "jurisdiction": string, "confidence": "high"|"low" }
+Do NOT return null. If no specific jurisdiction can be found or inferred, default to "New York".`,
   model,
 });
 
@@ -83,18 +88,18 @@ to null.`,
 export const documentAnalysisAgent = new Agent({
   id: "document-analysis-agent",
   name: "document-analysis-agent",
-  instructions: `Read the contract text and extract the key information.
+  instructions: `Read the document text (which can be a contract, court case, judgment, or other legal file) and extract the key information.
 Respond ONLY as strict JSON with this exact structure:
 {
   "caseId": "string (e.g. A unique looking ID from the header, or generate a random one)",
-  "partyA": "string (The petitioner/first party)",
-  "partyB": "string (The respondent/second party)",
-  "summary": "string (A plain language summary of what this contract is about)",
-  "facts": ["string", "string"] (Key facts extracted from the contract),
-  "legalQuestions": ["string", "string"] (What are the core legal implications or questions arising from this contract?),
+  "partyA": "string (The petitioner/first party, or plaintiff)",
+  "partyB": "string (The respondent/second party, or defendant)",
+  "summary": "string (A plain language summary of what this document is about)",
+  "facts": ["string", "string"] (Key facts extracted from the document),
+  "legalQuestions": ["string", "string"] (What are the core legal implications or questions arising from this document?),
   "petitionerCounsel": "string (Counsel/lawyer/firm representing partyA, or N/A if not found)",
   "respondentCounsel": "string (Counsel/lawyer/firm representing partyB, or N/A if not found)",
-  "evidence": ["string", "string"] (Exhibits, annexures, or referenced schedules in the contract, or empty array if not found)
+  "evidence": ["string", "string"] (Exhibits, annexures, or referenced schedules in the document, or empty array if not found)
 }`,
   model,
 });

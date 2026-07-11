@@ -284,7 +284,7 @@ export default function ManualReviewPortal() {
                       </div>
                     </div>
 
-                    <div className="clause-card__body">
+                     <div className="clause-card__body">
                       {/* Original Clause */}
                       <div className="text-block">
                         <span className="block-label">Original Contract Clause</span>
@@ -293,20 +293,48 @@ export default function ManualReviewPortal() {
                         </div>
                       </div>
 
-                      {/* Rationale / Explanatory */}
-                      {clause.rationale && (
-                        <div className="text-block">
-                          <span className="block-label">Risk Explanation / Rationale</span>
-                          <div className="block-content rationale-box">
-                            <AlertCircle size={14} className="rationale-icon" />
-                            <span>{clause.rationale}</span>
+                      {/* Structured Details (Reason & Impact) */}
+                      <div className="clause-analysis-details" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                        <div className="analysis-subbox" style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+                          <span className="section-label-tag" style={{ fontSize: '10px', fontWeight: '700', color: '#555', textTransform: 'uppercase' }}>Issue / Deviation</span>
+                          <div style={{ fontSize: '13px', color: risk !== 'low' ? '#ff6b6b' : '#aaa', marginTop: '4px' }}>
+                            {clause.reason || clause.rationale || 'No material legal concerns detected.'}
+                          </div>
+                        </div>
+                        <div className="analysis-subbox" style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+                          <span className="section-label-tag" style={{ fontSize: '10px', fontWeight: '700', color: '#555', textTransform: 'uppercase' }}>Impact Analysis</span>
+                          <div style={{ fontSize: '13px', color: '#fbbf24', marginTop: '4px' }}>
+                            {clause.impact || 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Legal Reasoning & Precedents */}
+                      {(clause.groundingSources?.length > 0 || clause.reasoning) && (
+                        <div className="text-block" style={{ marginBottom: '14px' }}>
+                          <span className="block-label">Applicable Law & Legal Reasoning</span>
+                          <div className="block-content reasoning-box" style={{ fontSize: '13px', color: '#aaa', lineHeight: '1.5', padding: '10px 12px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '6px' }}>
+                            <p style={{ margin: '0 0 8px 0' }}>{clause.reasoning}</p>
+                            {clause.groundingSources?.length > 0 && (
+                              <div className="grounding-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#7b61ff', textTransform: 'uppercase' }}>Grounded In Precedents</span>
+                                {clause.groundingSources.map((source, sIdx) => (
+                                  <div key={sIdx} style={{ fontSize: '12px', borderLeft: '2px solid #7b61ff', paddingLeft: '8px' }}>
+                                    <strong style={{ color: '#eee' }}>{source}</strong>
+                                    {clause.whyPrecedent?.[sIdx] && (
+                                      <div style={{ fontSize: '11px', color: '#7b61ff', fontStyle: 'italic' }}>Relevance: {clause.whyPrecedent[sIdx]}</div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
 
                       {/* Enkrypt Blocks */}
                       {isBlocked && (
-                        <div className="blocked-alert">
+                        <div className="blocked-alert" style={{ marginBottom: '14px', background: 'rgba(214,40,40,0.1)', border: '1px solid rgba(214,40,40,0.3)', padding: '10px 12px', borderRadius: '6px', color: '#ff4d4d', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
                           <ShieldAlert size={14} />
                           <span>
                             <strong>Enkrypt AI Output Guard Blocked Draft:</strong>{" "}

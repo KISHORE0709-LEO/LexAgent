@@ -87,7 +87,7 @@ export default function SeniorPartnerSignoff() {
       });
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/approve`,
+        `${import.meta.env.VITE_API_URL || ''}/api/approve`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -206,18 +206,39 @@ export default function SeniorPartnerSignoff() {
                             </div>
                             <div className="meta-pill">
                               <span className="label">Confidence Score:</span>
-                              <span className="val score-val">{clause.confidence_score || 85}%</span>
+                              <span className="val score-val">{clause.confidenceScore || clause.confidence_score || 85}%</span>
                             </div>
                           </div>
-                          <p className="rationale-text">
-                            <strong>Why Flagged:</strong> {clause.rationale}
+                          <p className="rationale-text" style={{ marginBottom: '8px' }}>
+                            <strong>Issue Detected:</strong> {clause.reason || clause.rationale}
                           </p>
+                          {clause.impact && (
+                            <p className="rationale-text" style={{ color: '#fbbf24' }}>
+                              <strong>Impact:</strong> {clause.impact}
+                            </p>
+                          )}
+                          {clause.reasoning && (
+                            <p className="rationale-text" style={{ color: '#aaa', fontStyle: 'italic', fontSize: '13px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', marginTop: '8px' }}>
+                              <strong>Reasoning:</strong> {clause.reasoning}
+                            </p>
+                          )}
                         </div>
 
                         {/* Retrieved Precedents */}
                         <div className="precedents-panel">
                           <h4>Retrieved Precedents (Grounding Knowledge)</h4>
-                          {precedents.length > 0 ? (
+                          {clause.groundingSources?.length > 0 ? (
+                            <ul className="precedent-bullets">
+                              {clause.groundingSources.map((source, sIdx) => (
+                                <li key={sIdx} style={{ marginBottom: '6px' }}>
+                                  <strong style={{ color: '#eee' }}>{source}</strong>
+                                  {clause.whyPrecedent?.[sIdx] && (
+                                    <div style={{ color: '#7b61ff', fontSize: '11px', fontStyle: 'italic' }}>Relevance: {clause.whyPrecedent[sIdx]}</div>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : precedents.length > 0 ? (
                             <ul className="precedent-bullets">
                               {precedents.map((prec, pIdx) => (
                                 <li key={pIdx}>{prec}</li>

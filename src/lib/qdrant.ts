@@ -89,6 +89,17 @@ export async function ensureCollection() {
       });
       console.log(`Created Qdrant collection "${COLLECTION}" with dimension ${EMBEDDING_DIM}`);
     }
+
+    // Ensure index exists for jurisdiction keyword filter
+    try {
+      await qdrant.createPayloadIndex(COLLECTION, {
+        field_name: "jurisdiction",
+        field_schema: "keyword",
+      });
+      console.log(`Verified/created Qdrant payload index for "jurisdiction" in collection "${COLLECTION}"`);
+    } catch (e) {
+      console.warn(`Could not ensure payload index for "jurisdiction" in "${COLLECTION}":`, e);
+    }
   } catch (error) {
     console.error("Failed to ensure collection in Qdrant:", error);
     throw error;
@@ -283,6 +294,17 @@ export async function ensurePolicyCollection() {
         vectors: { size: EMBEDDING_DIM, distance: "Cosine" },
       });
       console.log(`Created Qdrant collection "${POLICIES_COLLECTION}" with dimension ${EMBEDDING_DIM}`);
+    }
+
+    // Ensure index exists for jurisdiction keyword filter
+    try {
+      await qdrant.createPayloadIndex(POLICIES_COLLECTION, {
+        field_name: "jurisdiction",
+        field_schema: "keyword",
+      });
+      console.log(`Verified/created Qdrant payload index for "jurisdiction" in collection "${POLICIES_COLLECTION}"`);
+    } catch (e) {
+      console.warn(`Could not ensure payload index for "jurisdiction" in "${POLICIES_COLLECTION}":`, e);
     }
   } catch (error) {
     console.error("Failed to ensure policy collection in Qdrant:", error);

@@ -111,7 +111,7 @@ export default function AgentDashboard() {
       if (user?.uid) formData.append('user_id', user.uid);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/summarise`,
+        `${import.meta.env.VITE_API_URL || ''}/summarise`,
         { method: 'POST', body: formData }
       );
 
@@ -135,18 +135,77 @@ export default function AgentDashboard() {
             try {
               const data = JSON.parse(line);
               if (data.processing_status === 'failed') throw new Error(data.error);
-              if (data.processing_status === 'complete') {
+
+              if (data.processing_status === 'document_summary') {
+                setProcessingStatus('Analyzing clauses...');
+                if (data.court_name) setDetectedJurisdiction(data.court_name);
+                
+                // Add the initial analysis card to messages list
+                setMessages(prev => {
+                  // Check if card is already added to avoid duplication
+                  if (prev.some(msg => msg.id === 'current-analysis-card')) {
+                    return prev;
+                  }
+                  const cardMsg = {
+                    id: 'current-analysis-card',
+                    role: 'agent',
+                    type: 'analysis_card',
+                    data: {
+                      ...data,
+                      ipc_sections: [],
+                      executive_summary: null
+                    }
+                  };
+                  return [...prev, cardMsg];
+                });
+              } 
+              else if (data.processing_status === 'clause_analyzed') {
+                setMessages(prev => {
+                  return prev.map(msg => {
+                    if (msg.id === 'current-analysis-card') {
+                      const updatedClauses = [...(msg.data.ipc_sections || [])];
+                      if (!updatedClauses.some(c => c.id === data.clause.id)) {
+                        updatedClauses.push(data.clause);
+                      }
+                      return {
+                        ...msg,
+                        data: {
+                          ...msg.data,
+                          ipc_sections: updatedClauses
+                        }
+                      };
+                    }
+                    return msg;
+                  });
+                });
+              }
+              else if (data.processing_status === 'complete') {
                 setProcessingStatus('');
                 if (data.court_name) setDetectedJurisdiction(data.court_name);
-                setMessages(prev => [...prev, {
-                  id: Date.now() + 2, role: 'agent', type: 'analysis_card', data,
-                }]);
-              } else {
+                setMessages(prev => {
+                  return prev.map(msg => {
+                    if (msg.id === 'current-analysis-card') {
+                      return {
+                        ...msg,
+                        id: Date.now() + 2, // change ID to make it static
+                        data: {
+                          ...msg.data,
+                          ...data,
+                          ipc_sections: data.ipc_sections || msg.data.ipc_sections
+                        }
+                      };
+                    }
+                    return msg;
+                  });
+                });
+              } 
+              else {
                 const labels = {
                   uploading: 'Uploading document...',
                   extracting: 'Extracting text...',
-                  summarising: 'Running jurisdiction-aware analysis...',
-                  structuring: 'Structuring results...',
+                  resolving_jurisdiction: 'Resolving jurisdiction...',
+                  summarising: 'Creating summary & facts...',
+                  analyzing_clauses: 'Analyzing clauses concurrently...',
                 };
                 setProcessingStatus(labels[data.processing_status] || data.processing_status);
               }
@@ -204,11 +263,12 @@ export default function AgentDashboard() {
       return (
         <div key={msg.id} className="msg-row msg-row--agent">
           <div className="msg-avatar msg-avatar--agent"><Scale size={16} /></div>
-          <div className="msg-bubble msg-bubble--agent analysis-bubble">
+          <div className="msg-bubble msg-bubble--agent analysis-bubble" style={{ width: '100%' }}>
             <p className="analysis-intro">
               Analysis complete — processed through Jurisdiction-Aware Retrieval and Enkrypt AI Safety Pipeline.
             </p>
 
+            {/* Document Header & Facts */}
             <div className="analysis-card">
               <div className="analysis-card__header">
                 <BrainCircuit size={15} />
@@ -233,34 +293,176 @@ export default function AgentDashboard() {
               </div>
             </div>
 
+            {/* Compliance Ring & Executive Summary */}
+            <div className="analysis-card">
+              <div className="compliance-header">
+                <div className="compliance-info">
+                  <span style={{ fontSize: '15px', fontWeight: '700', color: '#fff' }}>Compliance Dashboard</span>
+                  <div className="compliance-badge-group">
+                    <span className="compliance-pill compliance-pill--high">
+                      High: {data.executive_summary?.high_risk_count ?? 0}
+                    </span>
+                    <span className="compliance-pill compliance-pill--medium">
+                      Medium: {data.executive_summary?.medium_risk_count ?? 0}
+                    </span>
+                    <span className="compliance-pill compliance-pill--low">
+                      Low: {data.executive_summary?.low_risk_count ?? 0}
+                    </span>
+                  </div>
+                </div>
+                <div className="compliance-meter">
+                  <div className="compliance-circle">
+                    <span className="compliance-circle-score" style={{ 
+                      color: (data.executive_summary?.overall_compliance_score ?? 100) >= 80 ? '#10b981' : 
+                             (data.executive_summary?.overall_compliance_score ?? 100) >= 60 ? '#fbbf24' : '#ff4d4d' 
+                    }}>
+                      {data.executive_summary?.overall_compliance_score ?? '--'}%
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#72728c', fontWeight: '600', marginTop: '2px' }}>Compliance Score</span>
+                </div>
+              </div>
+
+              {data.executive_summary ? (
+                <div className="executive-summary-box">
+                  <div className="exec-issues-section">
+                    <span className="exec-section-label">Key Legal Issues Detected</span>
+                    {data.executive_summary.key_legal_issues?.length > 0 ? (
+                      <ul className="exec-list">
+                        {data.executive_summary.key_legal_issues.map((issue, idx) => (
+                          <li key={idx}>{issue}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="summary-text" style={{ margin: '6px 0 0' }}>No material legal concerns detected.</p>
+                    )}
+                  </div>
+                  <div className="exec-actions-section">
+                    <span className="exec-section-label">Prioritized Action Items</span>
+                    {data.executive_summary.prioritized_actions?.length > 0 ? (
+                      <ul className="exec-list">
+                        {data.executive_summary.prioritized_actions.map((action, idx) => (
+                          <li key={idx} style={{ color: '#fbbf24' }}>{action}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="summary-text" style={{ margin: '6px 0 0' }}>No urgent actions required.</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="executive-summary-box" style={{ textAlign: 'center', padding: '24px', color: '#555' }}>
+                  <span>Analyzing clauses and calibrating compliance risk scores...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Clause-by-Clause Assessment Cards */}
             {data.ipc_sections?.length > 0 && (
-              <div className="analysis-card analysis-card--risk">
-                <div className="analysis-card__header analysis-card__header--risk">
-                  <AlertTriangle size={15} />
-                  <span>Clause Risk Assessment</span>
-                </div>
-                <div className="analysis-card__body">
-                  <p className="risk-subtitle">
-                    Benchmarked against Qdrant precedents in {data.court_name}. Enkrypt AI guards applied.
-                  </p>
-                  {data.ipc_sections.map((clause, i) => {
-                    const isBlocked = clause.description.includes('[ENKRYPT AI BLOCKED]');
-                    const isHigh = clause.section.includes('HIGH');
-                    return (
-                      <div key={i} className={`clause-item ${isHigh ? 'clause-item--high' : 'clause-item--medium'}`}>
-                        <span className={`risk-badge ${isHigh ? 'risk-badge--high' : 'risk-badge--medium'}`}>
-                          {clause.section}
-                        </span>
-                        <p className="clause-desc">{clause.description}</p>
-                        {isBlocked
-                          ? <div className="guard-status guard-status--blocked"><X size={12} /> Output Guard Blocked</div>
-                          : clause.description.includes('[AI Suggestion]') &&
-                            <div className="guard-status guard-status--passed"><CheckCircle2 size={12} /> Passed Safety Guard</div>
-                        }
+              <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <span className="exec-section-label" style={{ fontSize: '13px', marginLeft: '4px' }}>Clause-by-Clause Assessment</span>
+                
+                {data.ipc_sections.map((clause, idx) => {
+                  const risk = clause.riskLevel?.toLowerCase() || 'low';
+                  const isBlocked = !clause.guardPassed;
+                  
+                  return (
+                    <div key={idx} className={`structured-clause-card structured-clause-card--${risk}`}>
+                      <div className="clause-card-header">
+                        <div className="clause-card-title-group">
+                          <span className={`clause-card-badge clause-card-badge--${risk}`}>
+                            {risk.toUpperCase()} Risk
+                          </span>
+                          <span style={{ fontSize: '15px', fontWeight: '700', color: '#fff' }}>
+                            Clause #{idx + 1}
+                          </span>
+                        </div>
+                        <div className="clause-confidence">
+                          Confidence: <span className="confidence-val">{clause.confidenceScore || 90}%</span>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Original Clause */}
+                      <div className="clause-content-section">
+                        <span className="section-label-tag">Original Clause Text</span>
+                        <div className="original-clause-display">
+                          {clause.originalClause}
+                        </div>
+                      </div>
+
+                      {/* Analysis Details (Reason & Impact) */}
+                      <div className="clause-analysis-details">
+                        <div className="analysis-subbox">
+                          <span className="section-label-tag">Issue / Violation</span>
+                          <div className={`analysis-subbox-content ${risk !== 'low' ? 'analysis-subbox-content--warn' : ''}`}>
+                            {clause.reason || 'No material legal concerns detected.'}
+                          </div>
+                        </div>
+                        <div className="analysis-subbox">
+                          <span className="section-label-tag">Impact Analysis</span>
+                          <div className={`analysis-subbox-content ${risk !== 'low' ? 'analysis-subbox-content--action' : ''}`}>
+                            {clause.impact || 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Precedents and Legal Reasoning */}
+                      {(clause.groundingSources?.length > 0 || clause.reasoning) && (
+                        <div className="clause-content-section">
+                          <span className="section-label-tag">Applicable Law & Legal Reasoning</span>
+                          <p className="summary-text" style={{ margin: '4px 0 10px', fontSize: '14px' }}>
+                            {clause.reasoning || 'Standard terms compliant with governing rules.'}
+                          </p>
+                          {clause.groundingSources?.length > 0 && (
+                            <div className="precedent-relevance-list">
+                              <span className="section-label-tag" style={{ color: '#7b61ff', fontSize: '10px' }}>Grounded In Precedents</span>
+                              {clause.groundingSources.map((source, sIdx) => (
+                                <div key={sIdx} className="precedent-relevance-item">
+                                  <span className="precedent-relevance-title">{source}</span>
+                                  {clause.whyPrecedent?.[sIdx] && (
+                                    <span className="precedent-relevance-why">Relevance: {clause.whyPrecedent[sIdx]}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Suggested Rewrite */}
+                      {clause.revisedClause && (
+                        <div className="clause-content-section" style={{ marginTop: '4px' }}>
+                          <span className="section-label-tag" style={{ color: '#10b981' }}>Recommended Clause Rewrite</span>
+                          <div className="rewritten-clause-box">
+                            <div className="rewritten-clause-text">
+                              {clause.revisedClause}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Safety Guards status */}
+                      <div className="guard-status-row" style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        borderTop: '1px solid rgba(255,255,255,0.04)', 
+                        paddingTop: '12px', 
+                        marginTop: '4px' 
+                      }}>
+                        {isBlocked ? (
+                          <div className="guard-status guard-status--blocked" style={{ fontSize: '12px' }}>
+                            <X size={14} /> Output Guard Blocked suggestion: {clause.guardReasons?.join(', ') || 'Security policy violation'}
+                          </div>
+                        ) : (
+                          <div className="guard-status guard-status--passed" style={{ fontSize: '12px' }}>
+                            <CheckCircle2 size={14} /> Passed Enkrypt Safety Pipeline
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

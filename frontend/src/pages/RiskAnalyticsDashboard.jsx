@@ -76,7 +76,7 @@ export default function RiskAnalyticsDashboard() {
     async function fetchAnalytics() {
       setIsLoading(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/analytics`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/analytics`);
         if (response.ok) {
           const data = await response.json();
           // Update analytics if we have points in the database, otherwise keep fallback mocks
@@ -97,7 +97,7 @@ export default function RiskAnalyticsDashboard() {
     setRecalibrating(true);
     setRecalibrateStatus(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/analytics/recalibrate`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/analytics/recalibrate`);
       if (response.ok) {
         const result = await response.json();
         setRecalibrateStatus({ type: 'success', text: result.message || 'System weights recalibrated successfully!' });

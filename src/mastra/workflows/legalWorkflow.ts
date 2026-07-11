@@ -4,6 +4,15 @@ import { inputGuard, outputGuard } from "../../lib/enkrypt.js";
 import { searchClausesByJurisdiction } from "../../lib/qdrant.js";
 import { clauseAnalysisAgent, draftingAgent, jurisdictionAgent, documentAnalysisAgent } from "../agents/legalAgents.js";
 
+// Helper function to extract and parse JSON from LLM responses, even if wrapped in markdown fences
+function parseLLMJson(text: string): any {
+  let cleaned = text.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
+  return JSON.parse(cleaned.trim());
+}
+
 // ---------- Step 1: Enkrypt Input Guard ----------
 // Runs BEFORE any LLM sees the document. Blocks prompt injection, PII, toxicity.
 const inputGuardStep = createStep({
@@ -40,7 +49,7 @@ const jurisdictionStep = createStep({
     );
     let parsed: { jurisdiction: string | null } = { jurisdiction: null };
     try {
-      parsed = JSON.parse(response.text);
+      parsed = parseLLMJson(response.text);
     } catch (e) {
       console.error("Failed to parse jurisdictionAgent response JSON. Raw response text was:\n", response.text);
       return {
@@ -145,7 +154,7 @@ const clauseAnalysisStep = createStep({
       );
       let parsed: { riskLevel: "low" | "medium" | "high"; explanation: string };
       try {
-        parsed = JSON.parse(analysisResponse.text);
+        parsed = parseLLMJson(analysisResponse.text);
       } catch (e) {
         console.error("Failed to parse clauseAnalysisAgent JSON response. Raw response text was:\n", analysisResponse.text);
         return {
@@ -278,7 +287,7 @@ const draftAndGuardStep = createStep({
         const draftResponse = await draftingAgent.generate(draftPrompt);
         let parsed: { revisedClause: string; rationale: string };
         try {
-          parsed = JSON.parse(draftResponse.text);
+          parsed = parseLLMJson(draftResponse.text);
         } catch (e) {
           console.error("Failed to parse draftingAgent response JSON. Raw response text was:\n", draftResponse.text);
           return {
@@ -397,7 +406,7 @@ const documentAnalysisStep = createStep({
     );
     let parsed: any;
     try {
-      parsed = JSON.parse(analysisResponse.text);
+      parsed = parseLLMJson(analysisResponse.text);
     } catch (e) {
       console.error("Failed to parse documentAnalysisAgent JSON response. Raw response text was:\n", analysisResponse.text);
       return {
