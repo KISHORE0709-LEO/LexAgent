@@ -16,6 +16,14 @@ import {
   ensureReviewerKnowledgeCollection,
   saveApprovedClause,
   searchClausesByJurisdiction,
+  saveChatSession,
+  listChatSessions,
+  deleteChatSession,
+  saveProject,
+  listProjects,
+  deleteProject,
+  qdrant,
+  SESSIONS_COLLECTION,
 } from "./lib/qdrant.js";
 import { analyzeRiskOverrides } from "./lib/riskAnalytics.js";
 
@@ -406,6 +414,97 @@ app.post("/api/chat", async (c) => {
     return c.json({ response: text });
   } catch (err) {
     console.error("Error in /api/chat:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.get("/api/history", async (c) => {
+  try {
+    const userId = c.req.query("userId") || "default_user";
+    console.log(`Fetching history for user: ${userId}`);
+    
+    // Safely list sessions
+    const sessions = await listChatSessions(userId).catch(err => {
+      console.warn("Qdrant listChatSessions failed:", err);
+      return [];
+    });
+    
+    // Safely list projects
+    const projects = await listProjects(userId).catch(err => {
+      console.warn("Qdrant listProjects failed:", err);
+      return [];
+    });
+    
+    // Safely get collection points count
+    let pointsCount = 0;
+    let status = "disconnected";
+    try {
+      const collectionInfo = await qdrant.getCollection(SESSIONS_COLLECTION);
+      // Qdrant JS client could return collection info either at root level or nested inside a result field
+      pointsCount = collectionInfo?.points_count || (collectionInfo as any)?.result?.points_count || 0;
+      status = "connected";
+    } catch (e) {
+      console.warn("Failed to get Qdrant collection info:", e);
+    }
+    
+    return c.json({ 
+      sessions, 
+      projects, 
+      qdrantStatus: status,
+      qdrantPoints: pointsCount
+    });
+  } catch (err) {
+    console.error("Error in GET /api/history:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.post("/api/sessions", async (c) => {
+  try {
+    const { sessionId, userId, title, messages, pinned, archived, projectId } = await c.req.json();
+    if (!sessionId || !userId) {
+      return c.json({ error: "sessionId and userId are required." }, 400);
+    }
+    await saveChatSession(sessionId, userId, title, messages || [], !!pinned, !!archived, projectId || null);
+    return c.json({ success: true, message: "Chat session saved successfully." });
+  } catch (err) {
+    console.error("Error in POST /api/sessions:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.delete("/api/sessions/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    await deleteChatSession(id);
+    return c.json({ success: true, message: "Chat session deleted successfully." });
+  } catch (err) {
+    console.error("Error in DELETE /api/sessions:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.post("/api/projects", async (c) => {
+  try {
+    const { projectId, userId, name } = await c.req.json();
+    if (!projectId || !userId || !name) {
+      return c.json({ error: "projectId, userId, and name are required." }, 400);
+    }
+    await saveProject(projectId, userId, name);
+    return c.json({ success: true, message: "Project saved successfully." });
+  } catch (err) {
+    console.error("Error in POST /api/projects:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.delete("/api/projects/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    await deleteProject(id);
+    return c.json({ success: true, message: "Project deleted successfully." });
+  } catch (err) {
+    console.error("Error in DELETE /api/projects:", err);
     return c.json({ error: (err as Error).message }, 500);
   }
 });

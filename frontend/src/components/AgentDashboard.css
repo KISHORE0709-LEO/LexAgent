@@ -90,7 +90,7 @@
 
 /* New doc button */
 .new-doc-btn {
-  margin: 24px 16px 0;
+  margin: 24px 16px 20px;
   padding: 13px 18px;
   background: rgba(214,40,40,0.12);
   border: 1px solid rgba(214,40,40,0.4);
@@ -127,12 +127,12 @@
 
 .history-group-label {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  color: #444;
+  color: #888;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 20px 10px 8px;
+  letter-spacing: 0.08em;
+  padding: 24px 12px 10px;
 }
 
 .history-item {
@@ -1056,4 +1056,145 @@
   font-style: italic;
   font-size: 12px;
   color: #7b61ff;
+}
+
+/* ─── Premium Workspace Sidebar Enhancements ─── */
+.sidebar-search-container {
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+
+.sidebar-search-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
+  padding: 10px 14px 10px 38px !important;
+  font-size: 13.5px !important;
+  color: #fff !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar-search-input:focus {
+  border-color: rgba(214, 40, 40, 0.5) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.project-group {
+  margin-bottom: 8px;
+  padding: 0 14px;
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+.project-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.history-item-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13.5px;
+}
+
+.chat-item-actions {
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.history-item:hover .chat-item-actions {
+  opacity: 1;
+}
+
+.context-menu-dropdown {
+  position: absolute;
+  right: 12px;
+  top: 36px;
+  background: #0f0f11 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  padding: 6px !important;
+  z-index: 1000 !important;
+  width: 170px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.context-menu-dropdown .dropdown-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 8px 10px !important;
+  font-size: 12px !important;
+  background: transparent !important;
+  border: none !important;
+  color: #ccc !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  border-radius: 6px !important;
+  transition: background 0.2s, color 0.2s !important;
+}
+
+.context-menu-dropdown .dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #fff !important;
+}
+
+.context-menu-dropdown .dropdown-item--danger:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+}
+
+/* Qdrant Status Indicator Style */
+.qdrant-status-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(16, 185, 129, 0.04);
+  border: 1px solid rgba(16, 185, 129, 0.12);
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #10b981;
+  font-weight: 500;
+}
+
+.qdrant-status-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+  animation: qdrant-pulse 2s infinite;
+}
+
+@keyframes qdrant-pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
