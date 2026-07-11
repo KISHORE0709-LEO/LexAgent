@@ -3,30 +3,57 @@ import {
   Plus, MessageSquare, Settings, LogOut, Paperclip, Send,
   BrainCircuit, X, FileText, AlertTriangle, CheckCircle2,
   ChevronLeft, ChevronRight, Mic, MicOff, Link, MoreHorizontal,
-  Folder, Scale, User
+  Folder, Scale, User, Search, Pin, Archive, Trash2, Edit3,
+  Copy, Download, FolderPlus, ExternalLink, PanelLeft, PanelLeftClose
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import './AgentDashboard.css';
 
-const MOCK_HISTORY = {
-  Today: [
-    { id: 1, title: 'NDA Benchmarking (NY)', jurisdiction: 'New York' },
-    { id: 2, title: 'Employment Contract Review', jurisdiction: 'California' },
-  ],
-  Yesterday: [
-    { id: 3, title: 'SaaS MSA — Limitation Clause', jurisdiction: 'Delaware' },
-  ],
-  'Previous 7 Days': [
-    { id: 4, title: 'IP Assignment Agreement', jurisdiction: 'New York' },
-    { id: 5, title: 'Vendor Service Agreement', jurisdiction: 'California' },
-  ],
-};
+const groupChatsByDate = (chats, searchQuery) => {
+  const groups = {
+    Pinned: [],
+    Today: [],
+    Yesterday: [],
+    'Last 7 Days': [],
+    'Last 30 Days': [],
+    Older: []
+  };
 
-const MOCK_PROJECTS = [
-  { id: 'p1', name: 'Acme Corp Deals' },
-  { id: 'p2', name: 'Q3 NDAs' },
-];
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
+  const sevenDaysAgo = todayStart - 6 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAgo = todayStart - 29 * 24 * 60 * 60 * 1000;
+
+  const filtered = chats.filter(c => {
+    if (c.archived) return false;
+    if (!searchQuery) return true;
+    return c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+           (c.messages && c.messages.some(m => m.text?.toLowerCase().includes(searchQuery.toLowerCase())));
+  });
+
+  filtered.forEach(chat => {
+    if (chat.pinned) {
+      groups.Pinned.push(chat);
+      return;
+    }
+    const t = chat.timestamp || Date.now();
+    if (t >= todayStart) {
+      groups.Today.push(chat);
+    } else if (t >= yesterdayStart) {
+      groups.Yesterday.push(chat);
+    } else if (t >= sevenDaysAgo) {
+      groups['Last 7 Days'].push(chat);
+    } else if (t >= thirtyDaysAgo) {
+      groups['Last 30 Days'].push(chat);
+    } else {
+      groups.Older.push(chat);
+    }
+  });
+
+  return Object.fromEntries(Object.entries(groups).filter(([_, items]) => items.length > 0));
+};
 
 const renderTextWithLinks = (text) => {
   if (!text) return '';
@@ -121,11 +148,245 @@ export default function AgentDashboard() {
   const [detectedJurisdiction, setDetectedJurisdiction] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [activeChat, setActiveChat] = useState(null);
+  
+  // Dynamic history and project states
+  const [sessions, setSessions] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeChat, setActiveChat] = useState(null); // sessionId
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [activeContextMenu, setActiveContextMenu] = useState(null); // sessionId
+  const [movingSessionId, setMovingSessionId] = useState(null);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [projectsCollapsed, setProjectsCollapsed] = useState({});
+  const [qdrantStatus, setQdrantStatus] = useState("connecting");
+  const [qdrantPoints, setQdrantPoints] = useState(0);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, processingStatus]);
+
+  // Fetch conversation history and projects on mount or user change
+  useEffect(() => {
+    fetchHistory();
+  }, [user]);
+
+  const fetchHistory = async () => {
+    try {
+      const userId = user?.uid || 'default_user';
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/history?userId=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data.sessions || []);
+        setProjects(data.projects || []);
+        setQdrantStatus(data.qdrantStatus || "connected");
+        setQdrantPoints(data.qdrantPoints || 0);
+      }
+    } catch (err) {
+      console.error("Error fetching history:", err);
+      setQdrantStatus("disconnected");
+    }
+  };
+
+  // Sync session state with the database
+  const syncSession = async (sessionId, title, messagesList, pinned, archived, projectId) => {
+    if (!sessionId) return;
+    try {
+      const userId = user?.uid || 'default_user';
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          userId,
+          title: title || 'New Chat',
+          messages: messagesList || [],
+          pinned: !!pinned,
+          archived: !!archived,
+          projectId: projectId || null
+        })
+      });
+      if (response.ok) {
+        fetchHistory(); // refresh sidebar list
+      }
+    } catch (err) {
+      console.error("Error syncing session:", err);
+    }
+  };
+
+  // Selects an existing chat from history
+  const handleSelectChat = (session) => {
+    setActiveChat(session.sessionId);
+    setMessages(session.messages || []);
+    setChatTitle(session.title || '');
+    // Scan messages to find detected jurisdiction
+    const analysisMsg = session.messages?.find(m => m.type === 'analysis_card');
+    if (analysisMsg && analysisMsg.data?.court_name) {
+      setDetectedJurisdiction(analysisMsg.data.court_name);
+    } else {
+      setDetectedJurisdiction('');
+    }
+  };
+
+  // Pinned/Unpinned Chat
+  const handleTogglePin = async (session) => {
+    await syncSession(
+      session.sessionId,
+      session.title,
+      session.messages,
+      !session.pinned,
+      session.archived,
+      session.projectId
+    );
+    setActiveContextMenu(null);
+  };
+
+  // Archive/Unarchive Chat
+  const handleToggleArchive = async (session) => {
+    await syncSession(
+      session.sessionId,
+      session.title,
+      session.messages,
+      session.pinned,
+      !session.archived,
+      session.projectId
+    );
+    setActiveContextMenu(null);
+  };
+
+  // Move to Project
+  const handleMoveToProject = async (session, projectId) => {
+    await syncSession(
+      session.sessionId,
+      session.title,
+      session.messages,
+      session.pinned,
+      session.archived,
+      projectId
+    );
+    setMovingSessionId(null);
+    setActiveContextMenu(null);
+  };
+
+  // Rename Session
+  const handleRenameSession = async (sessionId, newTitle) => {
+    const session = sessions.find(s => s.sessionId === sessionId);
+    if (!session || !newTitle.trim()) return;
+    await syncSession(
+      sessionId,
+      newTitle.trim(),
+      session.messages,
+      session.pinned,
+      session.archived,
+      session.projectId
+    );
+    setEditingSessionId(null);
+    setEditingTitle('');
+    setActiveContextMenu(null);
+  };
+
+  // Duplicate Session
+  const handleDuplicateSession = async (session) => {
+    const newSessionId = "session-" + Date.now() + Math.floor(Math.random() * 1000);
+    await syncSession(
+      newSessionId,
+      `Copy of ${session.title}`,
+      session.messages || [],
+      false,
+      false,
+      session.projectId
+    );
+    setActiveContextMenu(null);
+  };
+
+  // Delete Session
+  const handleDeleteSession = async (sessionId) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/sessions/${sessionId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        if (activeChat === sessionId) {
+          handleNewChat();
+        }
+        fetchHistory();
+      }
+    } catch (err) {
+      console.error("Error deleting session:", err);
+    }
+    setActiveContextMenu(null);
+  };
+
+  // Export Session (JSON download)
+  const handleExportSession = (session) => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(session, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `${session.title.replace(/\s+/g, '_')}_history.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    setActiveContextMenu(null);
+  };
+
+  // Share Session (Copy link)
+  const handleShareSession = (session) => {
+    const shareUrl = `${window.location.origin}/dashboard?chatId=${session.sessionId}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert("Conversation share link copied to clipboard!");
+    }).catch(err => {
+      console.error("Failed to copy share link:", err);
+    });
+    setActiveContextMenu(null);
+  };
+
+  // Create Project Workspace
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    if (!newProjectName.trim()) return;
+    const projectId = "proj-" + Date.now();
+    try {
+      const userId = user?.uid || 'default_user';
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          userId,
+          name: newProjectName.trim()
+        })
+      });
+      if (response.ok) {
+        setNewProjectName('');
+        setShowNewProjectModal(false);
+        fetchHistory();
+      }
+    } catch (err) {
+      console.error("Error creating project:", err);
+    }
+  };
+
+  // Delete Project Workspace
+  const handleDeleteProject = async (projectId) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/projects/${projectId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        // Move any chats inside this project back to root (projectId: null)
+        const chatsInProject = sessions.filter(s => s.projectId === projectId);
+        for (const chat of chatsInProject) {
+          await syncSession(chat.sessionId, chat.title, chat.messages, chat.pinned, chat.archived, null);
+        }
+        fetchHistory();
+      }
+    } catch (err) {
+      console.error("Error deleting project:", err);
+    }
+  };
 
   const handleLogout = async () => {
     try { await logout(); navigate('/login'); } catch (e) { console.error(e); }
@@ -150,24 +411,60 @@ export default function AgentDashboard() {
     e.preventDefault();
     if (!inputText.trim() && !attachedFile) return;
 
+    // Generate or retrieve current session ID & Title
+    const isNew = !activeChat;
+    const currentChatId = activeChat || ("chat-" + Date.now() + Math.floor(Math.random() * 1000));
+    const fileToSend = attachedFile;
+    const currentTitle = chatTitle || (fileToSend ? fileToSend.name.replace(/\.[^/.]+$/, '') : (inputText.substring(0, 30) || 'New Chat'));
+
+    if (isNew) {
+      setActiveChat(currentChatId);
+      setChatTitle(currentTitle);
+    }
+
     const userMsg = {
       id: Date.now(),
       role: 'user',
       text: inputText,
-      file: attachedFile ? attachedFile.name : null,
+      file: fileToSend ? fileToSend.name : null,
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInputText('');
-    const fileToSend = attachedFile;
     setAttachedFile(null);
     setIsProcessing(true);
     setProcessingStatus('Initializing...');
 
-    if (fileToSend && !chatTitle) {
-      const name = fileToSend.name.replace(/\.[^/.]+$/, '');
-      setChatTitle(name);
+    // Optimistically update conversation history in the sidebar immediately (like ChatGPT)
+    if (isNew) {
+      const optSession = {
+        type: "session",
+        sessionId: currentChatId,
+        userId: user?.uid || "default_user",
+        title: currentTitle,
+        messages: updatedMessages,
+        pinned: false,
+        archived: false,
+        projectId: null,
+        timestamp: Date.now()
+      };
+      setSessions(prev => [optSession, ...prev]);
+    } else {
+      setSessions(prev => prev.map(s => {
+        if (s.sessionId === currentChatId) {
+          return {
+            ...s,
+            messages: updatedMessages,
+            timestamp: Date.now()
+          };
+        }
+        return s;
+      }));
     }
+
+    // Immediately sync user prompt to DB
+    await syncSession(currentChatId, currentTitle, updatedMessages, false, false, null);
 
     if (!fileToSend) {
       try {
@@ -184,20 +481,37 @@ export default function AgentDashboard() {
         if (!response.ok) throw new Error('Failed to connect to Legal Q&A Agent');
         const data = await response.json();
 
-        setMessages(prev => [...prev, {
+        const finalMessages = [...updatedMessages, {
           id: Date.now() + 1,
           role: 'agent',
           type: 'text',
           text: data.response
-        }]);
+        }];
+        setMessages(finalMessages);
+        setSessions(prev => prev.map(s => {
+          if (s.sessionId === currentChatId) {
+            return { ...s, messages: finalMessages };
+          }
+          return s;
+        }));
+        // Sync final Q&A response to DB
+        await syncSession(currentChatId, currentTitle, finalMessages, false, false, null);
       } catch (err) {
         console.error("Chat error:", err);
-        setMessages(prev => [...prev, {
+        const finalMessages = [...updatedMessages, {
           id: Date.now() + 1,
           role: 'agent',
           type: 'text',
           text: `⚠️ Error: ${err.message || 'Failed to connect to Legal Q&A Agent'}`
-        }]);
+        }];
+        setMessages(finalMessages);
+        setSessions(prev => prev.map(s => {
+          if (s.sessionId === currentChatId) {
+            return { ...s, messages: finalMessages };
+          }
+          return s;
+        }));
+        await syncSession(currentChatId, currentTitle, finalMessages, false, false, null);
       } finally {
         setIsProcessing(false);
         setProcessingStatus('');
@@ -240,9 +554,7 @@ export default function AgentDashboard() {
                 setProcessingStatus('Analyzing clauses...');
                 if (data.court_name) setDetectedJurisdiction(data.court_name);
 
-                // Add the initial analysis card to messages list
                 setMessages(prev => {
-                  // Check if card is already added to avoid duplication
                   if (prev.some(msg => msg.id === 'current-analysis-card')) {
                     return prev;
                   }
@@ -256,12 +568,14 @@ export default function AgentDashboard() {
                       executive_summary: null
                     }
                   };
-                  return [...prev, cardMsg];
+                  const finalMsgList = [...prev, cardMsg];
+                  syncSession(currentChatId, currentTitle, finalMsgList, false, false, null);
+                  return finalMsgList;
                 });
               }
               else if (data.processing_status === 'clause_analyzed') {
                 setMessages(prev => {
-                  return prev.map(msg => {
+                  const finalMsgList = prev.map(msg => {
                     if (msg.id === 'current-analysis-card') {
                       const updatedClauses = [...(msg.data.ipc_sections || [])];
                       if (!updatedClauses.some(c => c.id === data.clause.id)) {
@@ -277,17 +591,19 @@ export default function AgentDashboard() {
                     }
                     return msg;
                   });
+                  syncSession(currentChatId, currentTitle, finalMsgList, false, false, null);
+                  return finalMsgList;
                 });
               }
               else if (data.processing_status === 'complete') {
                 setProcessingStatus('');
                 if (data.court_name) setDetectedJurisdiction(data.court_name);
                 setMessages(prev => {
-                  return prev.map(msg => {
+                  const finalMsgList = prev.map(msg => {
                     if (msg.id === 'current-analysis-card') {
                       return {
                         ...msg,
-                        id: Date.now() + 2, // change ID to make it static
+                        id: Date.now() + 2,
                         data: {
                           ...msg.data,
                           ...data,
@@ -297,6 +613,8 @@ export default function AgentDashboard() {
                     }
                     return msg;
                   });
+                  syncSession(currentChatId, currentTitle, finalMsgList, false, false, null);
+                  return finalMsgList;
                 });
               }
               else {
@@ -318,10 +636,14 @@ export default function AgentDashboard() {
     } catch (err) {
       console.error(err);
       setProcessingStatus('');
-      setMessages(prev => [...prev, {
-        id: Date.now() + 3, role: 'agent', type: 'text',
-        text: `Error analyzing document: ${err.message}`,
-      }]);
+      setMessages(prev => {
+        const finalMsgList = [...prev, {
+          id: Date.now() + 3, role: 'agent', type: 'text',
+          text: `Error analyzing document: ${err.message}`,
+        }];
+        syncSession(currentChatId, currentTitle, finalMsgList, false, false, null);
+        return finalMsgList;
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -611,42 +933,279 @@ export default function AgentDashboard() {
             <div className="brand-icon"><Scale size={18} /></div>
             <span className="brand-name">LexAgent</span>
           </div>
-          <button className="sidebar-toggle" onClick={() => setSidebarOpen(false)} title="Collapse sidebar">
-            <ChevronLeft size={18} />
+          <button className="sidebar-toggle" onClick={() => setSidebarOpen(false)} title="Collapse sidebar" style={{ color: '#aaa' }}>
+            <PanelLeftClose size={18} />
           </button>
         </div>
 
         <div className="sidebar-divider" />
 
         <button className="new-doc-btn" onClick={handleNewChat}>
-          <Plus size={16} /> New Analysis
+          <Plus size={16} /> New Analysis / Chat
         </button>
 
+        {/* Search Conversation Bar */}
+        <div className="sidebar-search-container">
+          <div style={{ position: 'relative', width: '100%' }}>
+            <Search size={16} style={{ position: 'absolute', left: '14px', top: '12px', color: '#666' }} />
+            <input 
+              type="text" 
+              placeholder="Search conversations..." 
+              value={searchQuery}
+              className="sidebar-search-input"
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')} 
+                style={{ position: 'absolute', right: '10px', top: '9px', background: 'transparent', border: 'none', color: '#999', cursor: 'pointer', fontSize: '10px' }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="sidebar-scroll">
-          {Object.entries(MOCK_HISTORY).map(([group, items]) => (
+          {/* Projects Section */}
+          <div className="projects-section" style={{ marginBottom: '20px' }}>
+            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 14px', marginBottom: '8px' }}>
+              <span className="history-group-label" style={{ margin: 0 }}>Projects / Workspaces</span>
+              <button 
+                onClick={() => setShowNewProjectModal(true)} 
+                title="Create New Project"
+                style={{ background: 'transparent', border: 'none', color: '#999', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                <FolderPlus size={14} />
+              </button>
+            </div>
+            
+            {projects.map(proj => {
+              const chatsInProj = sessions.filter(s => s.projectId === proj.projectId);
+              const isCollapsed = !!projectsCollapsed[proj.projectId];
+              return (
+                <div key={proj.projectId} className="project-group">
+                  <div className="project-header" onClick={() => setProjectsCollapsed(prev => ({ ...prev, [proj.projectId]: !prev[proj.projectId] }))}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Folder size={13} style={{ color: '#d62828', transform: isCollapsed ? 'none' : 'rotate(10deg)', transition: 'transform 0.2s' }} />
+                      <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#eee' }}>{proj.name}</span>
+                      <span style={{ fontSize: '10px', color: '#666' }}>({chatsInProj.length})</span>
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteProject(proj.projectId); }} 
+                      title="Delete Project Workspace"
+                      style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '11px' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {!isCollapsed && chatsInProj.map(chat => (
+                    <div 
+                      key={chat.sessionId} 
+                      className={`history-item ${activeChat === chat.sessionId ? 'history-item--active' : ''}`}
+                      style={{ paddingLeft: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    >
+                      <button 
+                        onClick={() => handleSelectChat(chat)} 
+                        className="history-item-btn"
+                      >
+                        <MessageSquare size={12} />
+                        <span className="history-title" style={{ fontSize: '12px' }}>{chat.title}</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Grouped Dynamic Chats */}
+          {Object.entries(groupChatsByDate(sessions, searchQuery)).map(([group, items]) => (
             <div key={group} className="history-group">
               <span className="history-group-label">{group}</span>
-              {items.map(item => (
-                <button
-                  key={item.id}
-                  className={`history-item ${activeChat === item.id ? 'history-item--active' : ''}`}
-                  onClick={() => setActiveChat(item.id)}
-                >
-                  <FileText size={14} className="history-icon" />
-                  <span className="history-title">{item.title}</span>
-                </button>
-              ))}
+              {items.map(item => {
+                const isEditing = editingSessionId === item.sessionId;
+                return (
+                  <div 
+                    key={item.sessionId} 
+                    className={`history-item ${activeChat === item.sessionId ? 'history-item--active' : ''}`}
+                    style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    {isEditing ? (
+                      <input 
+                        type="text"
+                        value={editingTitle}
+                        onChange={e => setEditingTitle(e.target.value)}
+                        onBlur={() => handleRenameSession(item.sessionId, editingTitle)}
+                        onKeyDown={e => e.key === 'Enter' && handleRenameSession(item.sessionId, editingTitle)}
+                        autoFocus
+                        style={{
+                          background: '#111',
+                          border: '1px solid #7b61ff',
+                          borderRadius: '4px',
+                          color: '#fff',
+                          fontSize: '12px',
+                          padding: '2px 6px',
+                          width: '80%'
+                        }}
+                      />
+                    ) : (
+                      <button
+                        className="history-item-btn"
+                        onClick={() => handleSelectChat(item)}
+                        style={{ background: 'transparent', border: 'none', color: 'inherit', textAlign: 'left', flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: 0, overflow: 'hidden' }}
+                      >
+                        {item.pinned ? <Pin size={13} style={{ transform: 'rotate(45deg)', color: '#fbbf24' }} /> : <MessageSquare size={13} />}
+                        <span className="history-title">{item.title}</span>
+                      </button>
+                    )}
+
+                    <div className="chat-item-actions" style={{ display: 'flex', alignItems: 'center' }}>
+                      <button 
+                        onClick={() => setActiveContextMenu(activeContextMenu === item.sessionId ? null : item.sessionId)}
+                        style={{ background: 'transparent', border: 'none', color: '#777', cursor: 'pointer', padding: '4px' }}
+                      >
+                        <MoreHorizontal size={14} />
+                      </button>
+                      
+                      {activeContextMenu === item.sessionId && (
+                        <div 
+                          className="context-menu-dropdown" 
+                          style={{
+                            position: 'absolute',
+                            right: '10px',
+                            top: '32px',
+                            background: '#0d0d0d',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: '8px',
+                            padding: '6px',
+                            zIndex: 100,
+                            width: '160px',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.8)'
+                          }}
+                        >
+                          <button 
+                            className="dropdown-item" 
+                            onClick={() => { setEditingSessionId(item.sessionId); setEditingTitle(item.title); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px', fontSize: '11px', background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <Edit3 size={11} /> Rename
+                          </button>
+                          
+                          <button 
+                            className="dropdown-item" 
+                            onClick={() => handleTogglePin(item)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px', fontSize: '11px', background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <Pin size={11} /> {item.pinned ? 'Unpin' : 'Pin'}
+                          </button>
+
+                          <button 
+                            className="dropdown-item" 
+                            onClick={() => setMovingSessionId(movingSessionId === item.sessionId ? null : item.sessionId)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px', fontSize: '11px', background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <Folder size={11} /> Move to Project...
+                          </button>
+
+                          {movingSessionId === item.sessionId && (
+                            <div style={{ paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px solid rgba(255,255,255,0.05)', margin: '4px 0' }}>
+                              <button 
+                                onClick={() => handleMoveToProject(item, null)}
+                                style={{ fontSize: '10px', background: 'transparent', border: 'none', color: '#999', textAlign: 'left', cursor: 'pointer' }}
+                              >
+                                [None]
+                              </button>
+                              {projects.map(p => (
+                                <button 
+                                  key={p.projectId} 
+                                  onClick={() => handleMoveToProject(item, p.projectId)}
+                                  style={{ fontSize: '10px', background: 'transparent', border: 'none', color: '#999', textAlign: 'left', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                >
+                                  {p.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          <button 
+                            className="dropdown-item" 
+                            onClick={() => handleShareSession(item)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px', fontSize: '11px', background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <ExternalLink size={11} /> Share
+                          </button>
+
+                          <button 
+                            className="dropdown-item" 
+                            onClick={() => handleExportSession(item)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px', fontSize: '11px', background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <Download size={11} /> Export
+                          </button>
+
+                          <button 
+                            className="dropdown-item" 
+                            onClick={() => handleToggleArchive(item)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px', fontSize: '11px', background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <Archive size={11} /> Archive
+                          </button>
+
+                          <button 
+                            className="dropdown-item" 
+                            onClick={() => handleDuplicateSession(item)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px', fontSize: '11px', background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <Copy size={11} /> Duplicate
+                          </button>
+
+                          <button 
+                            className="dropdown-item dropdown-item--danger" 
+                            onClick={() => handleDeleteSession(item.sessionId)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px', fontSize: '11px', background: 'transparent', border: 'none', color: '#ff4d4d', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <Trash2 size={11} /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ))}
 
-          <div className="projects-section">
-            <span className="history-group-label">Projects</span>
-            {MOCK_PROJECTS.map(p => (
-              <button key={p.id} className="history-item" type="button">
-                <Folder size={14} className="history-icon" />
-                <span className="history-title">{p.name}</span>
-              </button>
-            ))}
+          {/* Archived Chats Toggle Section */}
+          <div className="projects-section" style={{ marginTop: '10px' }}>
+            <button 
+              className="history-item"
+              onClick={() => setArchivedOpen(!archivedOpen)}
+              style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}
+              type="button"
+            >
+              <Archive size={16} className="history-icon" />
+              <span className="history-title" style={{ fontSize: '13.5px', fontWeight: '600', color: '#aaa' }}>Archived Chats ({sessions.filter(s => s.archived).length})</span>
+            </button>
+            {archivedOpen && (
+              <div style={{ paddingLeft: '14px', borderLeft: '1px dashed #222', marginTop: '6px' }}>
+                {sessions.filter(s => s.archived).length === 0 ? (
+                  <span style={{ fontSize: '10px', color: '#555', padding: '6px 8px', display: 'block' }}>No archived chats.</span>
+                ) : (
+                  sessions.filter(s => s.archived).map(chat => (
+                    <div key={chat.sessionId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px' }}>
+                      <span style={{ fontSize: '11px', color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>{chat.title}</span>
+                      <button 
+                        onClick={() => handleToggleArchive(chat)}
+                        style={{ fontSize: '9px', background: '#222', border: '1px solid #333', borderRadius: '4px', color: '#eee', padding: '2px 6px', cursor: 'pointer' }}
+                      >
+                        Restore
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="projects-section">
@@ -680,6 +1239,12 @@ export default function AgentDashboard() {
               </button>
             </div>
           )}
+          <div className="qdrant-status-container">
+            <span className="qdrant-status-dot" style={{ backgroundColor: qdrantStatus === 'connected' ? '#10b981' : '#ef4444', boxShadow: qdrantStatus === 'connected' ? '0 0 8px #10b981' : '0 0 8px #ef4444' }} />
+            <span style={{ color: qdrantStatus === 'connected' ? '#10b981' : '#ef4444' }}>
+              Qdrant DB: {qdrantStatus === 'connected' ? `Synced (${qdrantPoints} pts)` : 'Connecting...'}
+            </span>
+          </div>
         </div>
       </aside>
 
@@ -689,8 +1254,8 @@ export default function AgentDashboard() {
         {/* Top bar */}
         <header className="lex-topbar">
           {!sidebarOpen && (
-            <button className="sidebar-toggle sidebar-toggle--open" onClick={() => setSidebarOpen(true)}>
-              <ChevronRight size={18} />
+            <button className="sidebar-toggle sidebar-toggle--open" onClick={() => setSidebarOpen(true)} title="Expand sidebar" style={{ color: '#aaa', marginRight: '12px' }}>
+              <PanelLeft size={18} />
             </button>
           )}
           <span className="topbar-title">{chatTitle || 'LexAgent'}</span>
@@ -799,6 +1364,86 @@ export default function AgentDashboard() {
           <p className="input-disclaimer">LexAgent can make mistakes. Verify important legal information.</p>
         </div>
       </main>
+
+      {/* ── New Project Modal ── */}
+      {showNewProjectModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <form onSubmit={handleCreateProject} style={{
+            background: '#0d0d0d',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '320px',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '15px', color: '#fff', fontWeight: '600' }}>Create New Project Workspace</h3>
+            <input 
+              type="text" 
+              placeholder="Project name..." 
+              value={newProjectName}
+              onChange={e => setNewProjectName(e.target.value)}
+              autoFocus
+              style={{
+                width: '100%',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                fontSize: '13px',
+                color: '#fff',
+                outline: 'none'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button 
+                type="button" 
+                onClick={() => setShowNewProjectModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '6px',
+                  color: '#ccc',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit"
+                style={{
+                  background: '#7b61ff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Create Project
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

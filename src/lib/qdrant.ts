@@ -194,6 +194,23 @@ export async function ensureSessionCollection() {
       });
       console.log(`Created Qdrant collection "${SESSIONS_COLLECTION}" with dimension ${EMBEDDING_DIM}`);
     }
+
+    // Ensure keyword indexes exist for filtered scrolls on 'type' and 'userId'.
+    // Qdrant Cloud requires these indexes before using match filters.
+    for (const field of ["type", "userId"]) {
+      try {
+        await qdrant.createPayloadIndex(SESSIONS_COLLECTION, {
+          field_name: field,
+          field_schema: "keyword",
+        });
+        console.log(`Verified/created Qdrant payload index for "${field}" in collection "${SESSIONS_COLLECTION}"`);
+      } catch (e: any) {
+        // 409 conflict means the index already exists — that's fine
+        if (!e?.message?.includes("already exists") && e?.status !== 409) {
+          console.warn(`Could not ensure payload index for "${field}" in "${SESSIONS_COLLECTION}":`, e);
+        }
+      }
+    }
   } catch (error) {
     console.error("Failed to ensure session collection in Qdrant:", error);
     throw error;
@@ -447,6 +464,189 @@ export async function saveApprovedClause(
     console.log(`Saved approved clause to Reviewer Knowledge DB: ${id} (status: ${status})`);
   } catch (error) {
     console.error("Failed to save approved clause to Reviewer Knowledge DB:", error);
+    throw error;
+  }
+}
+
+// ---------- Chat Sessions & Projects Persistence ----------
+
+export type ChatSessionPayload = {
+  type: "session";
+  sessionId: string;
+  userId: string;
+  title: string;
+  messages: any[];
+  pinned: boolean;
+  archived: boolean;
+  projectId: string | null;
+  timestamp: number;
+};
+
+export type ProjectPayload = {
+  type: "project";
+  projectId: string;
+  userId: string;
+  name: string;
+  timestamp: number;
+};
+
+/**
+ * Saves or updates a chat session in Qdrant.
+ */
+export async function saveChatSession(
+  sessionId: string,
+  userId: string,
+  title: string,
+  messages: any[],
+  pinned: boolean,
+  archived: boolean,
+  projectId: string | null
+) {
+  try {
+    const pointId = generateDeterministicUUID("session-" + sessionId);
+    const dummyVector = new Array(EMBEDDING_DIM).fill(0);
+    const payload: ChatSessionPayload = {
+      type: "session",
+      sessionId,
+      userId,
+      title,
+      messages,
+      pinned,
+      archived,
+      projectId,
+      timestamp: Date.now(),
+    };
+    await qdrant.upsert(SESSIONS_COLLECTION, {
+      points: [{ id: pointId, vector: dummyVector, payload }],
+    });
+    console.log(`Saved chat session memory to Qdrant: ${sessionId}`);
+  } catch (error) {
+    console.error(`Failed to save chat session ${sessionId} to Qdrant:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Lists all chat sessions for a given user.
+ */
+export async function listChatSessions(userId: string): Promise<ChatSessionPayload[]> {
+  try {
+    // Try filtered scroll first (requires 'type' and 'userId' indexes)
+    try {
+      const result = await qdrant.scroll(SESSIONS_COLLECTION, {
+        filter: {
+          must: [
+            { key: "type", match: { value: "session" } },
+            { key: "userId", match: { value: userId } },
+          ],
+        },
+        limit: 100,
+        with_payload: true,
+      });
+      return result.points.map((p) => p.payload as ChatSessionPayload);
+    } catch (filterErr: any) {
+      // If indexes are missing (400 Bad Request), fall back to in-memory filter
+      console.warn("Filtered scroll failed (indexes may not exist yet), falling back to in-memory filter:", filterErr?.message);
+      const result = await qdrant.scroll(SESSIONS_COLLECTION, {
+        limit: 500,
+        with_payload: true,
+      });
+      return result.points
+        .map((p) => p.payload as any)
+        .filter((p) => p?.type === "session" && p?.userId === userId) as ChatSessionPayload[];
+    }
+  } catch (error) {
+    console.error(`Failed to scroll chat sessions for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Deletes a chat session by ID.
+ */
+export async function deleteChatSession(sessionId: string) {
+  try {
+    const pointId = generateDeterministicUUID("session-" + sessionId);
+    await qdrant.delete(SESSIONS_COLLECTION, {
+      points: [pointId],
+    });
+    console.log(`Deleted chat session from Qdrant: ${sessionId}`);
+  } catch (error) {
+    console.error(`Failed to delete chat session ${sessionId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Saves a project in Qdrant.
+ */
+export async function saveProject(projectId: string, userId: string, name: string) {
+  try {
+    const pointId = generateDeterministicUUID("project-" + projectId);
+    const dummyVector = new Array(EMBEDDING_DIM).fill(0);
+    const payload: ProjectPayload = {
+      type: "project",
+      projectId,
+      userId,
+      name,
+      timestamp: Date.now(),
+    };
+    await qdrant.upsert(SESSIONS_COLLECTION, {
+      points: [{ id: pointId, vector: dummyVector, payload }],
+    });
+    console.log(`Saved project to Qdrant: ${name}`);
+  } catch (error) {
+    console.error(`Failed to save project ${name} to Qdrant:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Lists all projects for a user.
+ */
+export async function listProjects(userId: string): Promise<ProjectPayload[]> {
+  try {
+    // Try filtered scroll first (requires 'type' and 'userId' indexes)
+    try {
+      const result = await qdrant.scroll(SESSIONS_COLLECTION, {
+        filter: {
+          must: [
+            { key: "type", match: { value: "project" } },
+            { key: "userId", match: { value: userId } },
+          ],
+          limit: 50,
+          with_payload: true,
+        } as any,
+      });
+      return result.points.map((p) => p.payload as ProjectPayload);
+    } catch (filterErr: any) {
+      console.warn("Filtered project scroll failed, falling back to in-memory filter:", filterErr?.message);
+      const result = await qdrant.scroll(SESSIONS_COLLECTION, {
+        limit: 500,
+        with_payload: true,
+      });
+      return result.points
+        .map((p) => p.payload as any)
+        .filter((p) => p?.type === "project" && p?.userId === userId) as ProjectPayload[];
+    }
+  } catch (error) {
+    console.error(`Failed to scroll projects for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Deletes a project by ID.
+ */
+export async function deleteProject(projectId: string) {
+  try {
+    const pointId = generateDeterministicUUID("project-" + projectId);
+    await qdrant.delete(SESSIONS_COLLECTION, {
+      points: [pointId],
+    });
+    console.log(`Deleted project from Qdrant: ${projectId}`);
+  } catch (error) {
+    console.error(`Failed to delete project ${projectId}:`, error);
     throw error;
   }
 }
