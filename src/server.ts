@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const { PDFParse } = require("pdf-parse");
 import { stream } from "hono/streaming";
 import { legalDocumentWorkflow } from "./mastra/workflows/legalWorkflow.js";
-import { clauseAnalysisAgent, jurisdictionAgent, documentAnalysisAgent } from "./mastra/agents/legalAgents.js";
+import { clauseAnalysisAgent, jurisdictionAgent, documentAnalysisAgent, legalQaAgent } from "./mastra/agents/legalAgents.js";
 import { inputGuard, outputGuard } from "./lib/enkrypt.js";
 import {
   ensureCollection,
@@ -386,6 +386,26 @@ app.get("/api/analytics/recalibrate", async (c) => {
     });
   } catch (err) {
     console.error("Error in /api/analytics/recalibrate:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.post("/api/chat", async (c) => {
+  try {
+    const { message } = await c.req.json();
+    if (!message) {
+      return c.json({ error: "Message is required." }, 400);
+    }
+
+    console.log(`Received Q&A legal query: "${message}"`);
+    
+    // Call the legalQaAgent to generate the response
+    const agentResponse = await legalQaAgent.generate(message);
+    const text = agentResponse.text;
+
+    return c.json({ response: text });
+  } catch (err) {
+    console.error("Error in /api/chat:", err);
     return c.json({ error: (err as Error).message }, 500);
   }
 });

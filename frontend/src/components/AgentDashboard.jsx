@@ -28,6 +28,82 @@ const MOCK_PROJECTS = [
   { id: 'p2', name: 'Q3 NDAs' },
 ];
 
+const renderTextWithLinks = (text) => {
+  if (!text) return '';
+  return text.split('\n').map((line, lineIdx) => {
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = linkRegex.exec(line)) !== null) {
+      const [fullMatch, label, url] = match;
+      const index = match.index;
+
+      if (index > lastIndex) {
+        parts.push(line.substring(lastIndex, index));
+      }
+
+      parts.push(
+        <a 
+          key={index} 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="legal-source-link"
+          style={{ color: '#ff4d4d', textDecoration: 'underline', fontWeight: '600' }}
+        >
+          {label}
+        </a>
+      );
+
+      lastIndex = linkRegex.lastIndex;
+    }
+
+    if (lastIndex < line.length) {
+      parts.push(line.substring(lastIndex));
+    }
+
+    const processedParts = parts.map((part, partIdx) => {
+      if (typeof part !== 'string') return part;
+      
+      const boldRegex = /\*\*([^*]+)\*\*/g;
+      const boldParts = [];
+      let bLastIndex = 0;
+      let bMatch;
+      
+      while ((bMatch = boldRegex.exec(part)) !== null) {
+        const [bFull, content] = bMatch;
+        const bIndex = bMatch.index;
+        
+        if (bIndex > bLastIndex) {
+          boldParts.push(part.substring(bLastIndex, bIndex));
+        }
+        
+        boldParts.push(
+          <strong key={bIndex} style={{ color: '#fff', fontWeight: '700' }}>
+            {content}
+          </strong>
+        );
+        
+        bLastIndex = boldRegex.lastIndex;
+      }
+      
+      if (bLastIndex < part.length) {
+        boldParts.push(part.substring(bLastIndex));
+      }
+      
+      return boldParts.length > 0 ? boldParts : part;
+    });
+
+    return (
+      <span key={lineIdx} style={{ display: 'block', marginBottom: '8px' }}>
+        {processedParts}
+      </span>
+    );
+  });
+};
+
 export default function AgentDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -94,14 +170,38 @@ export default function AgentDashboard() {
     }
 
     if (!fileToSend) {
-      setTimeout(() => {
+      try {
+        setProcessingStatus('Thinking...');
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || ''}/api/chat`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userMsg.text })
+          }
+        );
+
+        if (!response.ok) throw new Error('Failed to connect to Legal Q&A Agent');
+        const data = await response.json();
+
         setMessages(prev => [...prev, {
-          id: Date.now() + 1, role: 'agent', type: 'text',
-          text: 'I am optimized to analyze legal documents. Please attach a PDF or DOCX contract using the paperclip icon for a full jurisdiction-aware risk analysis.',
+          id: Date.now() + 1,
+          role: 'agent',
+          type: 'text',
+          text: data.response
         }]);
+      } catch (err) {
+        console.error("Chat error:", err);
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
+          role: 'agent',
+          type: 'text',
+          text: `⚠️ Error: ${err.message || 'Failed to connect to Legal Q&A Agent'}`
+        }]);
+      } finally {
         setIsProcessing(false);
         setProcessingStatus('');
-      }, 800);
+      }
       return;
     }
 
@@ -253,7 +353,7 @@ export default function AgentDashboard() {
       return (
         <div key={msg.id} className="msg-row msg-row--agent">
           <div className="msg-avatar msg-avatar--agent"><Scale size={16} /></div>
-          <div className="msg-bubble msg-bubble--agent"><p>{msg.text}</p></div>
+          <div className="msg-bubble msg-bubble--agent"><p>{renderTextWithLinks(msg.text)}</p></div>
         </div>
       );
     }
