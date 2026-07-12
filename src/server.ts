@@ -24,6 +24,8 @@ import {
   deleteProject,
   qdrant,
   SESSIONS_COLLECTION,
+  saveUserConfig,
+  getUserConfig,
 } from "./lib/qdrant.js";
 import { analyzeRiskOverrides } from "./lib/riskAnalytics.js";
 
@@ -422,6 +424,31 @@ app.get("/api/analytics/recalibrate", async (c) => {
     });
   } catch (err) {
     console.error("Error in /api/analytics/recalibrate:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.get("/api/config", async (c) => {
+  try {
+    const userId = c.req.query("userId") || "default_user";
+    const config = await getUserConfig(userId);
+    return c.json({ config });
+  } catch (err) {
+    console.error("Error in GET /api/config:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.post("/api/config", async (c) => {
+  try {
+    const { userId = "default_user", config } = await c.req.json();
+    if (!config) {
+      return c.json({ error: "config object is required." }, 400);
+    }
+    await saveUserConfig(userId, config);
+    return c.json({ success: true, message: "Configuration saved." });
+  } catch (err) {
+    console.error("Error in POST /api/config:", err);
     return c.json({ error: (err as Error).message }, 500);
   }
 });

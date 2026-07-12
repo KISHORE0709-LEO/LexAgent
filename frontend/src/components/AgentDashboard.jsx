@@ -28,6 +28,7 @@ const groupChatsByDate = (chats, searchQuery) => {
 
   const filtered = chats.filter(c => {
     if (c.archived) return false;
+    if (c.projectId) return false; // Exclude chats already in a project
     if (!searchQuery) return true;
     return c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
            (c.messages && c.messages.some(m => m.text?.toLowerCase().includes(searchQuery.toLowerCase())));
@@ -1182,7 +1183,19 @@ export default function AgentDashboard() {
             )}
 
             {projects.map(proj => {
-              const chatsInProj = sessions.filter(s => s.projectId === proj.projectId);
+              const chatsInProj = sessions.filter(s => {
+                if (s.projectId !== proj.projectId) return false;
+                if (!searchQuery) return true;
+                const matchTitle = s.title.toLowerCase().includes(searchQuery.toLowerCase());
+                const matchMsg = s.messages && s.messages.some(m => m.text?.toLowerCase().includes(searchQuery.toLowerCase()));
+                return matchTitle || matchMsg;
+              });
+
+              if (searchQuery) {
+                const matchProjName = proj.name.toLowerCase().includes(searchQuery.toLowerCase());
+                if (!matchProjName && chatsInProj.length === 0) return null;
+              }
+
               const isOpen = !projectsCollapsed[proj.projectId];
               const isActiveProject = activeProjectId === proj.projectId;
               return (
