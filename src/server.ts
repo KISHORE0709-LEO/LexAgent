@@ -52,6 +52,8 @@ app.post("/summarise", async (c) => {
   try {
     const body = await c.req.parseBody();
     const files = body["files"];
+    const language = (body["language"] as string) || "English";
+    
     if (!files) {
       return c.json({ error: "No files provided." }, 400);
     }
@@ -59,12 +61,20 @@ app.post("/summarise", async (c) => {
     // Handle both single file and array of files
     const fileArray = Array.isArray(files) ? files : [files];
     let extractedText = "";
+    const imageParts: { type: "image"; image: Uint8Array; mimeType: string }[] = [];
 
     for (const file of fileArray) {
       if (file instanceof File) {
         const buffer = await file.arrayBuffer();
-        // Extract text using pdf-parse if it's a PDF
-        if (file.name.toLowerCase().endsWith(".pdf")) {
+        
+        if (file.type.startsWith("image/")) {
+          console.log(`Detected image file: ${file.name}, type: ${file.type}`);
+          imageParts.push({
+            type: "image",
+            image: new Uint8Array(buffer),
+            mimeType: file.type,
+          });
+        } else if (file.name.toLowerCase().endsWith(".pdf")) {
           console.log(`Extracting text from PDF: ${file.name}, size: ${buffer.byteLength} bytes`);
           try {
             const parser = new PDFParse(new Uint8Array(buffer));
@@ -84,8 +94,8 @@ app.post("/summarise", async (c) => {
       }
     }
 
-    if (extractedText.trim().length < 20) {
-      return c.json({ error: "Extracted text is too short." }, 400);
+    if (extractedText.trim().length < 20 && imageParts.length === 0) {
+      return c.json({ error: "No valid text or images provided." }, 400);
     }
 
     // Use Hono's streaming response helper to stream progress & complete payload to the UI
@@ -111,9 +121,21 @@ app.post("/summarise", async (c) => {
 
         // Document level summary
         sendStreamEvent(stream, { processing_status: "summarising" });
-        const docResponse = await documentAnalysisAgent.generate(
-          `Contract text:\n\n${extractedText}`
-        );
+        
+        const promptContent: any[] = [
+          { 
+            type: "text", 
+            text: `Requested Language: ${language}\n\nDocument text:\n\n${extractedText || "[Image Analysis Only - extract text/facts from the images provided]"}` 
+          }
+        ];
+        
+        for (const imgPart of imageParts) {
+          promptContent.push(imgPart);
+        }
+
+        const docResponse = await documentAnalysisAgent.generate([
+          { role: "user", content: promptContent }
+        ]);
         const parsedDoc = parseLLMJson(docResponse.text);
 
         // Stream the document-level summary immediately to paint the UI
@@ -125,9 +147,14 @@ app.post("/summarise", async (c) => {
           petitioner: parsedDoc.partyA || "Party A",
           respondent: parsedDoc.partyB || "Party B",
           plain_summary: parsedDoc.summary || "Legal document analysis complete.",
+          eli5_summary: parsedDoc.eli5Summary || "",
           key_facts: parsedDoc.facts || ["Analyzed successfully."],
           core_legal_questions: parsedDoc.legalQuestions || ["Are the clauses enforceable?"],
           evidence: parsedDoc.evidence || [],
+          requires_counselling: parsedDoc.requiresCounselling || false,
+          actionable_steps: parsedDoc.actionableSteps || [],
+          follow_up_questions: parsedDoc.followUpQuestions || [],
+          red_flags: parsedDoc.redFlags || [],
         });
 
         // Decompose contract into clauses
@@ -259,6 +286,7 @@ app.post("/summarise", async (c) => {
           confidence_score: complianceScore,
           executive_summary: executiveSummary,
           status: "success",
+          red_flags: parsedDoc.redFlags || [],
         };
 
         sendStreamEvent(stream, {
@@ -505,6 +533,57 @@ app.delete("/api/projects/:id", async (c) => {
     return c.json({ success: true, message: "Project deleted successfully." });
   } catch (err) {
     console.error("Error in DELETE /api/projects:", err);
+    return c.json({ error: (err as Error).message }, 500);
+  }
+});
+
+app.post("/api/tts", async (c) => {
+  try {
+    const body = await c.req.json();
+    const text = body.text;
+    const voiceId = body.voiceId || "EXAVITQu4vr4xnSDxMaL"; // Sarah (Premade standard voice allowed on Free Tier)
+    
+    if (!text) {
+      return c.json({ error: "Text is required." }, 400);
+    }
+    
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) {
+      return c.json({ error: "ElevenLabs API key is missing." }, 500);
+    }
+
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?optimize_streaming_latency=2`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2", // V2 supports 29 languages including Hindi, Tamil
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`ElevenLabs Error: ${errText}`);
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    
+    return new Response(audioBuffer, {
+      headers: {
+        'Content-Type': 'audio/mpeg'
+      }
+    });
+
+  } catch (err) {
+    console.error("Error in POST /api/tts:", err);
     return c.json({ error: (err as Error).message }, 500);
   }
 });
