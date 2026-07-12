@@ -158,6 +158,7 @@ export default function AgentDashboard() {
   const [projects, setProjects] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChat, setActiveChat] = useState(null); // sessionId
+  const [activeProjectId, setActiveProjectId] = useState(null); // which project new chats go into
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [activeContextMenu, setActiveContextMenu] = useState(null); // sessionId
@@ -276,6 +277,7 @@ export default function AgentDashboard() {
     setActiveChat(session.sessionId);
     setMessages(session.messages || []);
     setChatTitle(session.title || '');
+    setActiveProjectId(session.projectId || null); // keep project context in sync
     // Scan messages to find detected jurisdiction
     const analysisMsg = session.messages?.find(m => m.type === 'analysis_card');
     if (analysisMsg && analysisMsg.data?.court_name) {
@@ -465,13 +467,14 @@ export default function AgentDashboard() {
     }
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = (projectId = null) => {
     setMessages([]);
     setInputText('');
     setAttachedFiles([]);
     setChatTitle('');
     setDetectedJurisdiction('');
     setActiveChat(null);
+    setActiveProjectId(projectId);
   };
 
   const handleFileSelect = (e) => {
@@ -521,7 +524,7 @@ export default function AgentDashboard() {
         messages: updatedMessages,
         pinned: false,
         archived: false,
-        projectId: null,
+        projectId: activeProjectId,
         timestamp: Date.now()
       };
       setSessions(prev => [optSession, ...prev]);
@@ -539,7 +542,7 @@ export default function AgentDashboard() {
     }
 
     // Immediately sync user prompt to DB
-    await syncSession(currentChatId, currentTitle, updatedMessages, false, false, null);
+    await syncSession(currentChatId, currentTitle, updatedMessages, false, false, activeProjectId);
 
     if (filesToSend.length === 0) {
       try {
@@ -1158,52 +1161,85 @@ export default function AgentDashboard() {
 
         <div className="sidebar-scroll">
           {/* Projects Section */}
-          <div className="projects-section" style={{ marginBottom: '20px' }}>
-            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 14px', marginBottom: '8px' }}>
-              <span className="history-group-label" style={{ margin: 0 }}>Projects / Workspaces</span>
-              <button 
-                onClick={() => setShowNewProjectModal(true)} 
-                title="Create New Project"
-                style={{ background: 'transparent', border: 'none', color: '#999', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          <div className="proj-section">
+            <div className="proj-section-header">
+              <span className="proj-section-label">Workspaces</span>
+              <button
+                onClick={() => setShowNewProjectModal(true)}
+                className="proj-new-btn"
+                title="New Workspace"
               >
-                <FolderPlus size={14} />
+                <FolderPlus size={13} />
+                <span>New</span>
               </button>
             </div>
-            
+
+            {projects.length === 0 && (
+              <div className="proj-empty">
+                <Folder size={18} style={{ opacity: 0.3 }} />
+                <span>No workspaces yet</span>
+              </div>
+            )}
+
             {projects.map(proj => {
               const chatsInProj = sessions.filter(s => s.projectId === proj.projectId);
-              const isCollapsed = !!projectsCollapsed[proj.projectId];
+              const isOpen = !projectsCollapsed[proj.projectId];
+              const isActiveProject = activeProjectId === proj.projectId;
               return (
-                <div key={proj.projectId} className="project-group">
-                  <div className="project-header" onClick={() => setProjectsCollapsed(prev => ({ ...prev, [proj.projectId]: !prev[proj.projectId] }))}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Folder size={13} style={{ color: '#d62828', transform: isCollapsed ? 'none' : 'rotate(10deg)', transition: 'transform 0.2s' }} />
-                      <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#eee' }}>{proj.name}</span>
-                      <span style={{ fontSize: '10px', color: '#666' }}>({chatsInProj.length})</span>
+                <div key={proj.projectId} className={`proj-card ${isActiveProject ? 'proj-card--active' : ''}`}>
+                  {/* Project Header Row */}
+                  <div
+                    className="proj-card-header"
+                    onClick={() => setProjectsCollapsed(prev => ({ ...prev, [proj.projectId]: !prev[proj.projectId] }))}
+                  >
+                    <div className="proj-card-left">
+                      <div className={`proj-card-icon ${isActiveProject ? 'proj-card-icon--active' : ''}`}>
+                        <Folder size={12} />
+                      </div>
+                      <span className="proj-card-name">{proj.name}</span>
+                      <span className="proj-card-count">{chatsInProj.length}</span>
                     </div>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDeleteProject(proj.projectId); }} 
-                      title="Delete Project Workspace"
-                      style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '11px' }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  {!isCollapsed && chatsInProj.map(chat => (
-                    <div 
-                      key={chat.sessionId} 
-                      className={`history-item ${activeChat === chat.sessionId ? 'history-item--active' : ''}`}
-                      style={{ paddingLeft: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                    >
-                      <button 
-                        onClick={() => handleSelectChat(chat)} 
-                        className="history-item-btn"
+                    <div className="proj-card-actions">
+                      <button
+                        className="proj-action-btn"
+                        onClick={(e) => { e.stopPropagation(); handleNewChat(proj.projectId); }}
+                        title={`New chat in ${proj.name}`}
                       >
-                        <MessageSquare size={12} />
-                        <span className="history-title" style={{ fontSize: '12px' }}>{chat.title}</span>
+                        <Plus size={12} />
                       </button>
+                      <button
+                        className="proj-action-btn proj-action-btn--delete"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteProject(proj.projectId); }}
+                        title="Delete workspace"
+                      >
+                        <X size={11} />
+                      </button>
+                      <span className={`proj-chevron ${isOpen ? 'proj-chevron--open' : ''}`}>
+                        <ChevronRight size={13} />
+                      </span>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Dropdown Chat List */}
+                  <div className={`proj-dropdown ${isOpen ? 'proj-dropdown--open' : ''}`}>
+                    {chatsInProj.length === 0 ? (
+                      <div className="proj-dropdown-empty">
+                        <MessageSquare size={11} style={{ opacity: 0.4 }} />
+                        <span>No chats yet — click + to start</span>
+                      </div>
+                    ) : (
+                      chatsInProj.map(chat => (
+                        <button
+                          key={chat.sessionId}
+                          className={`proj-chat-item ${activeChat === chat.sessionId ? 'proj-chat-item--active' : ''}`}
+                          onClick={() => handleSelectChat(chat)}
+                        >
+                          <MessageSquare size={11} className="proj-chat-icon" />
+                          <span className="proj-chat-title">{chat.title}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -1449,6 +1485,20 @@ export default function AgentDashboard() {
             </button>
           )}
           <span className="topbar-title">{chatTitle || 'LexAgent'}</span>
+          {/* Show active project pill */}
+          {activeProjectId && (() => {
+            const proj = projects.find(p => p.projectId === activeProjectId);
+            return proj ? (
+              <span style={{
+                marginLeft: '10px', fontSize: '11px', fontWeight: '600',
+                background: 'rgba(214,40,40,0.12)', border: '1px solid rgba(214,40,40,0.3)',
+                color: '#ff6b6b', borderRadius: '20px', padding: '2px 10px',
+                display: 'flex', alignItems: 'center', gap: '4px'
+              }}>
+                <Folder size={10} /> {proj.name}
+              </span>
+            ) : null;
+          })()}
           <div className="topbar-actions">
             {detectedJurisdiction && (
               <span className="jurisdiction-badge">{detectedJurisdiction}</span>
