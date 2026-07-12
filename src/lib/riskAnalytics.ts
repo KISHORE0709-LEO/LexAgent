@@ -7,6 +7,7 @@ export type RecalibrationSuggestion = {
   frequent_overrides_by_category: Record<string, number>;
   rejections_by_jurisdiction: Record<string, number>;
   weight_recalibration_suggestions: Record<string, number>;
+  history: any[];
 };
 
 /**
