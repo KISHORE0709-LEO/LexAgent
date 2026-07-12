@@ -169,6 +169,235 @@
   border-top: 1px solid rgba(255,255,255,0.06);
 }
 
+/* ─── Workspace / Projects Accordion ─────────────────────── */
+.proj-section {
+  padding: 0 8px;
+  margin-bottom: 4px;
+}
+
+.proj-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 6px 10px;
+}
+
+.proj-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.proj-new-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(214,40,40,0.1);
+  border: 1px solid rgba(214,40,40,0.25);
+  border-radius: 6px;
+  color: #cc4444;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+.proj-new-btn:hover {
+  background: rgba(214,40,40,0.2);
+  border-color: rgba(214,40,40,0.5);
+  color: #ff6b6b;
+}
+
+.proj-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 0;
+  color: #444;
+  font-size: 11px;
+}
+
+/* Individual project card */
+.proj-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.proj-card:hover {
+  border-color: rgba(255,255,255,0.1);
+}
+.proj-card--active {
+  border-color: rgba(214,40,40,0.3);
+  box-shadow: 0 0 12px rgba(214,40,40,0.08);
+  background: rgba(214,40,40,0.04);
+}
+
+/* Project header row (clickable to expand) */
+.proj-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.proj-card-header:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.proj-card-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.proj-card-icon {
+  width: 24px;
+  height: 24px;
+  background: rgba(214,40,40,0.12);
+  border: 1px solid rgba(214,40,40,0.2);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c44;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.proj-card-icon--active {
+  background: rgba(214,40,40,0.25);
+  border-color: rgba(214,40,40,0.5);
+  color: #ff6b6b;
+  box-shadow: 0 0 8px rgba(214,40,40,0.3);
+}
+
+.proj-card-name {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #ddd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+.proj-card--active .proj-card-name { color: #ff8f8f; }
+
+.proj-card-count {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.07);
+  color: #666;
+  border-radius: 10px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+.proj-card--active .proj-card-count {
+  background: rgba(214,40,40,0.15);
+  color: #ff6b6b;
+}
+
+.proj-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.proj-action-btn {
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+}
+.proj-action-btn:hover { background: rgba(255,255,255,0.07); color: #ccc; }
+.proj-action-btn--delete:hover { background: rgba(214,40,40,0.12); color: #ff4d4d; }
+
+.proj-chevron {
+  display: flex;
+  align-items: center;
+  color: #444;
+  transition: transform 0.22s ease;
+  margin-left: 2px;
+}
+.proj-chevron--open { transform: rotate(90deg); color: #888; }
+
+/* Dropdown panel — animates open/close */
+.proj-dropdown {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.28s cubic-bezier(0.4,0,0.2,1);
+  border-top: 0px solid transparent;
+}
+.proj-dropdown--open {
+  max-height: 400px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.proj-dropdown-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  color: #444;
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* Chat rows inside the dropdown */
+.proj-chat-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 14px;
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  border-left: 2px solid transparent;
+}
+.proj-chat-item:hover {
+  background: rgba(255,255,255,0.04);
+  color: #ccc;
+  border-left-color: rgba(255,255,255,0.1);
+}
+.proj-chat-item--active {
+  background: rgba(214,40,40,0.08);
+  color: #fff;
+  border-left-color: #d62828;
+}
+
+.proj-chat-icon { flex-shrink: 0; opacity: 0.5; }
+.proj-chat-item--active .proj-chat-icon { opacity: 1; color: #d62828; }
+
+.proj-chat-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Footer */
 .sidebar-footer {
   padding: 16px 16px 20px;
