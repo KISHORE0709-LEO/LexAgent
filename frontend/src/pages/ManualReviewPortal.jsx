@@ -136,9 +136,9 @@ export default function ManualReviewPortal() {
     <div className="portal-container" id="manual-review-portal-root">
       {/* ── HEADER ── */}
       <header className="portal-header">
-        <button className="back-btn" onClick={() => navigate('/dashboard')} id="btn-back-to-dashboard">
+        <button className="back-btn" onClick={() => navigate('/dashboard')}>
           <ChevronLeft size={16} />
-          <span>Back to Agent Dashboard</span>
+          <span>Dashboard</span>
         </button>
         <div className="header-title">
           <Scale size={20} className="header-icon" />
