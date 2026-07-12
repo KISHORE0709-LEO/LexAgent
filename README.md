@@ -19,7 +19,7 @@
 | :--- | :--- |
 | **[1. The Problem & Our Solution](#-the-problem--our-solution)** | Overview of the pendency crisis and Judge-in-the-Loop philosophy |
 | **[2. Hackathon Core Technologies](#-hackathon-core-technologies)** | Deep dive into **Mastra**, **Qdrant**, and **Enkrypt AI** integrations |
-| **[3. Hackathon Judging Criteria Alignment](#-hackathon-judging-criteria-alignment)** | How LexAgent addresses every evaluation metric |
+| **[3. Project Highlights & Engineering Standards](#-project-highlights--engineering-standards)** | How LexAgent achieves enterprise-scale reliability |
 | **[4. Master System Architecture](#-master-system-architecture)** | End-to-end system and deployment architecture diagram |
 | **[5. Additional Capabilities](#-additional-capabilities)** | Features like ElevenLabs TTS and Firebase Auth |
 | **[6. Local Setup & Installation](#-local-setup--installation)** | Step-by-step instructions to run LexAgent locally |
@@ -104,11 +104,11 @@ graph TD
 
 ---
 
-## 🎯 Hackathon Judging Criteria Alignment
+## 🎯 Project Highlights & Engineering Standards
 
-We built LexAgent with the hackathon's specific evaluation metrics in mind. Here is how we address each one:
+LexAgent is engineered to meet rigorous enterprise standards across system design, code quality, and user experience:
 
-| Criterion | How LexAgent Excels |
+| Feature/Standard | How LexAgent Excels |
 | :--- | :--- |
 | **Engineering Quality** | Built with a robust, type-safe **TypeScript** stack (Node/Hono/React). We implemented proper environment isolation, clean service abstractions, and robust error handling for LLM timeouts. |
 | **AI Agent Workflow** | We moved beyond simple single-prompt chatbots. By utilizing a multi-agent workflow, we route complex legal documents through specialized agents (Extraction, Reasoning, Drafting) in parallel and sequence. |
