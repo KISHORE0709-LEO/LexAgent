@@ -6,9 +6,10 @@ import { auth, db } from '../lib/firebase';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  // Initialize from localStorage so returning users skip the black screen
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRoleState] = useState(null);
+  const [role, setRoleState] = useState(() => localStorage.getItem('userRole') || null);
 
   const setRole = (r) => {
     setRoleState(r);
@@ -20,27 +21,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      
+      setLoading(false); // ← unblock the UI immediately
+
+      // Fetch role in the background — don't block the app on this
       if (currentUser) {
-        // Fetch role from Firestore
-        try {
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userDoc.exists()) {
-            setRole(userDoc.data().role || 'citizen');
-          } else {
-            setRole('citizen');
-          }
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-          setRole('citizen');
-        }
+        getDoc(doc(db, 'users', currentUser.uid))
+          .then((userDoc) => {
+            setRole(userDoc.exists() ? (userDoc.data().role || 'citizen') : 'citizen');
+          })
+          .catch((error) => {
+            console.warn("Could not fetch user role (offline?):", error.message);
+            setRole('citizen'); // safe default
+          });
       } else {
         setRole(null);
       }
-      
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -59,7 +56,8 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ user, loading, role, setRole, logout }}>
-      {!loading && children}
+      {/* Always render children — ProtectedRoute handles the loading state */}
+      {children}
     </AuthContext.Provider>
   );
 };

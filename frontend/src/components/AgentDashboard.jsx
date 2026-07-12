@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   Plus, MessageSquare, Settings, LogOut, Paperclip, Send,
   BrainCircuit, X, FileText, AlertTriangle, CheckCircle2,
@@ -246,12 +246,12 @@ export default function AgentDashboard() {
     }
   };
 
-  // Sync session state with the database
-  const syncSession = async (sessionId, title, messagesList, pinned, archived, projectId) => {
+  // Sync session state with the database (fire-and-forget, NO fetchHistory call)
+  const syncSession = useCallback(async (sessionId, title, messagesList, pinned, archived, projectId) => {
     if (!sessionId) return;
     try {
       const userId = user?.uid || 'default_user';
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/sessions`, {
+      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -264,13 +264,12 @@ export default function AgentDashboard() {
           projectId: projectId || null
         })
       });
-      if (response.ok) {
-        fetchHistory(); // refresh sidebar list
-      }
+      // Do NOT call fetchHistory() here — it causes a full sidebar re-render
+      // that swallows clicks. State is updated optimistically by each handler.
     } catch (err) {
       console.error("Error syncing session:", err);
     }
-  };
+  }, [user]);
 
   // Selects an existing chat from history
   const handleSelectChat = (session) => {
@@ -286,93 +285,79 @@ export default function AgentDashboard() {
     }
   };
 
-  // Pinned/Unpinned Chat
-  const handleTogglePin = async (session) => {
-    await syncSession(
-      session.sessionId,
-      session.title,
-      session.messages,
-      !session.pinned,
-      session.archived,
-      session.projectId
-    );
+  // Pinned/Unpinned Chat — update local state instantly, sync to DB in background
+  const handleTogglePin = (session) => {
+    const newPinned = !session.pinned;
+    setSessions(prev => prev.map(s =>
+      s.sessionId === session.sessionId ? { ...s, pinned: newPinned } : s
+    ));
     setActiveContextMenu(null);
+    syncSession(session.sessionId, session.title, session.messages, newPinned, session.archived, session.projectId);
   };
 
-  // Archive/Unarchive Chat
-  const handleToggleArchive = async (session) => {
-    await syncSession(
-      session.sessionId,
-      session.title,
-      session.messages,
-      session.pinned,
-      !session.archived,
-      session.projectId
-    );
+  // Archive/Unarchive Chat — update local state instantly, sync to DB in background
+  const handleToggleArchive = (session) => {
+    const newArchived = !session.archived;
+    setSessions(prev => prev.map(s =>
+      s.sessionId === session.sessionId ? { ...s, archived: newArchived } : s
+    ));
+    if (activeChat === session.sessionId && newArchived) handleNewChat();
     setActiveContextMenu(null);
+    syncSession(session.sessionId, session.title, session.messages, session.pinned, newArchived, session.projectId);
   };
 
-  // Move to Project
-  const handleMoveToProject = async (session, projectId) => {
-    await syncSession(
-      session.sessionId,
-      session.title,
-      session.messages,
-      session.pinned,
-      session.archived,
-      projectId
-    );
+  // Move to Project — update local state instantly, sync to DB in background
+  const handleMoveToProject = (session, projectId) => {
+    setSessions(prev => prev.map(s =>
+      s.sessionId === session.sessionId ? { ...s, projectId } : s
+    ));
     setMovingSessionId(null);
     setActiveContextMenu(null);
+    syncSession(session.sessionId, session.title, session.messages, session.pinned, session.archived, projectId);
   };
 
-  // Rename Session
-  const handleRenameSession = async (sessionId, newTitle) => {
+  // Rename Session — update local state instantly, sync to DB in background
+  const handleRenameSession = (sessionId, newTitle) => {
     const session = sessions.find(s => s.sessionId === sessionId);
     if (!session || !newTitle.trim()) return;
-    await syncSession(
-      sessionId,
-      newTitle.trim(),
-      session.messages,
-      session.pinned,
-      session.archived,
-      session.projectId
-    );
+    const trimmed = newTitle.trim();
+    setSessions(prev => prev.map(s =>
+      s.sessionId === sessionId ? { ...s, title: trimmed } : s
+    ));
+    if (activeChat === sessionId) setChatTitle(trimmed);
     setEditingSessionId(null);
     setEditingTitle('');
     setActiveContextMenu(null);
+    syncSession(sessionId, trimmed, session.messages, session.pinned, session.archived, session.projectId);
   };
 
-  // Duplicate Session
-  const handleDuplicateSession = async (session) => {
+  // Duplicate Session — add to local state instantly, sync to DB in background
+  const handleDuplicateSession = (session) => {
     const newSessionId = "session-" + Date.now() + Math.floor(Math.random() * 1000);
-    await syncSession(
-      newSessionId,
-      `Copy of ${session.title}`,
-      session.messages || [],
-      false,
-      false,
-      session.projectId
-    );
+    const newSession = {
+      ...session,
+      sessionId: newSessionId,
+      title: `Copy of ${session.title}`,
+      pinned: false,
+      archived: false,
+      timestamp: Date.now()
+    };
+    setSessions(prev => [newSession, ...prev]);
     setActiveContextMenu(null);
+    syncSession(newSessionId, newSession.title, session.messages || [], false, false, session.projectId);
   };
 
-  // Delete Session
+  // Delete Session — remove from local state instantly, then delete from DB
   const handleDeleteSession = async (sessionId) => {
+    // Optimistic update: remove immediately
+    setSessions(prev => prev.filter(s => s.sessionId !== sessionId));
+    if (activeChat === sessionId) handleNewChat();
+    setActiveContextMenu(null);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/sessions/${sessionId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        if (activeChat === sessionId) {
-          handleNewChat();
-        }
-        fetchHistory();
-      }
+      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/sessions/${sessionId}`, { method: 'DELETE' });
     } catch (err) {
       console.error("Error deleting session:", err);
     }
-    setActiveContextMenu(null);
   };
 
   // Export Session (JSON download)
@@ -403,22 +388,23 @@ export default function AgentDashboard() {
     e.preventDefault();
     if (!newProjectName.trim()) return;
     const projectId = "proj-" + Date.now();
+    const newProject = {
+      type: "project",
+      projectId,
+      userId: user?.uid || 'default_user',
+      name: newProjectName.trim(),
+      timestamp: Date.now()
+    };
+    // Optimistic update
+    setProjects(prev => [...prev, newProject]);
+    setNewProjectName('');
+    setShowNewProjectModal(false);
     try {
-      const userId = user?.uid || 'default_user';
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/projects`, {
+      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId,
-          userId,
-          name: newProjectName.trim()
-        })
+        body: JSON.stringify({ projectId, userId: newProject.userId, name: newProject.name })
       });
-      if (response.ok) {
-        setNewProjectName('');
-        setShowNewProjectModal(false);
-        fetchHistory();
-      }
     } catch (err) {
       console.error("Error creating project:", err);
     }
@@ -426,17 +412,15 @@ export default function AgentDashboard() {
 
   // Delete Project Workspace
   const handleDeleteProject = async (projectId) => {
+    // Optimistic update: remove project and unlink its chats
+    setProjects(prev => prev.filter(p => p.projectId !== projectId));
+    setSessions(prev => prev.map(s => s.projectId === projectId ? { ...s, projectId: null } : s));
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/projects/${projectId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        // Move any chats inside this project back to root (projectId: null)
-        const chatsInProject = sessions.filter(s => s.projectId === projectId);
-        for (const chat of chatsInProject) {
-          await syncSession(chat.sessionId, chat.title, chat.messages, chat.pinned, chat.archived, null);
-        }
-        fetchHistory();
+      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/projects/${projectId}`, { method: 'DELETE' });
+      // Persist the unlinking for each chat in background
+      const chatsInProject = sessions.filter(s => s.projectId === projectId);
+      for (const chat of chatsInProject) {
+        syncSession(chat.sessionId, chat.title, chat.messages, chat.pinned, chat.archived, null);
       }
     } catch (err) {
       console.error("Error deleting project:", err);
@@ -775,16 +759,16 @@ export default function AgentDashboard() {
       return (
         <div key={msg.id} className="msg-row msg-row--agent">
           <div className="msg-avatar msg-avatar--agent"><Scale size={16} /></div>
-          <div className="msg-bubble msg-bubble--agent" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <p>{renderTextWithLinks(msg.text)}</p>
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <button 
+          <div className="msg-bubble msg-bubble--agent lex-response">
+            <div className="lex-response-body">{renderTextWithLinks(msg.text)}</div>
+            <div className="lex-response-footer">
+              <button
                 onClick={() => handlePlayAudio(msg.text)}
                 className="audio-play-btn"
                 title={isPlayingAudio ? 'Stop Audio' : 'Read Aloud'}
               >
-                {isPlayingAudio ? <Square size={14} fill="currentColor" /> : <Volume2 size={14} />}
-                <span>{isPlayingAudio ? 'Stop Audio' : 'Read Aloud'}</span>
+                {isPlayingAudio ? <Square size={13} fill="currentColor" /> : <Volume2 size={13} />}
+                <span>{isPlayingAudio ? 'Stop' : 'Read Aloud'}</span>
               </button>
             </div>
           </div>
@@ -914,25 +898,38 @@ export default function AgentDashboard() {
                 <div className="compliance-info">
                   <span style={{ fontSize: '15px', fontWeight: '700', color: '#fff' }}>Compliance Dashboard</span>
                   <div className="compliance-badge-group">
-                    <span className="compliance-pill compliance-pill--high">
-                      High: {data.executive_summary?.high_risk_count ?? 0}
-                    </span>
-                    <span className="compliance-pill compliance-pill--medium">
-                      Medium: {data.executive_summary?.medium_risk_count ?? 0}
-                    </span>
-                    <span className="compliance-pill compliance-pill--low">
-                      Low: {data.executive_summary?.low_risk_count ?? 0}
-                    </span>
+                    {(() => {
+                      // Live counts from ipc_sections when executive_summary not yet available
+                      const clauses = data.ipc_sections || [];
+                      const high = data.executive_summary?.high_risk_count ?? clauses.filter(c => c.riskLevel?.toLowerCase() === 'high').length;
+                      const medium = data.executive_summary?.medium_risk_count ?? clauses.filter(c => c.riskLevel?.toLowerCase() === 'medium').length;
+                      const low = data.executive_summary?.low_risk_count ?? clauses.filter(c => c.riskLevel?.toLowerCase() === 'low').length;
+                      return (
+                        <>
+                          <span className="compliance-pill compliance-pill--high">High: {high}</span>
+                          <span className="compliance-pill compliance-pill--medium">Medium: {medium}</span>
+                          <span className="compliance-pill compliance-pill--low">Low: {low}</span>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="compliance-meter">
                   <div className="compliance-circle">
-                    <span className="compliance-circle-score" style={{
-                      color: (data.executive_summary?.overall_compliance_score ?? 100) >= 80 ? '#10b981' :
-                        (data.executive_summary?.overall_compliance_score ?? 100) >= 60 ? '#fbbf24' : '#ff4d4d'
-                    }}>
-                      {data.executive_summary?.overall_compliance_score ?? '--'}%
-                    </span>
+                    {(() => {
+                      const clauses = data.ipc_sections || [];
+                      const score = data.executive_summary?.overall_compliance_score ??
+                        (clauses.length > 0
+                          ? Math.max(50, Math.round(100 - (clauses.filter(c => c.riskLevel?.toLowerCase() === 'high').length / clauses.length) * 40 - (clauses.filter(c => c.riskLevel?.toLowerCase() === 'medium').length / clauses.length) * 15))
+                          : null);
+                      return (
+                        <span className="compliance-circle-score" style={{
+                          color: score == null ? '#555' : score >= 80 ? '#10b981' : score >= 60 ? '#fbbf24' : '#ff4d4d'
+                        }}>
+                          {score != null ? `${score}%` : '--'}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <span style={{ fontSize: '11px', color: '#72728c', fontWeight: '600', marginTop: '2px' }}>Compliance Score</span>
                 </div>
@@ -1122,7 +1119,7 @@ export default function AgentDashboard() {
       {/* ── SIDEBAR ── */}
       <aside className="lex-sidebar">
         <div className="sidebar-top">
-          <div className="sidebar-brand">
+          <div className="sidebar-brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} title="Go to Home">
             <div className="brand-icon"><Scale size={18} /></div>
             <span className="brand-name">LexAgent</span>
           </div>
@@ -1213,7 +1210,7 @@ export default function AgentDashboard() {
           </div>
 
           {/* Grouped Dynamic Chats */}
-          {Object.entries(groupChatsByDate(sessions, searchQuery)).map(([group, items]) => (
+          {Object.entries(useMemo(() => groupChatsByDate(sessions, searchQuery), [sessions, searchQuery])).map(([group, items]) => (
             <div key={group} className="history-group">
               <span className="history-group-label">{group}</span>
               {items.map(item => {
