@@ -26,11 +26,11 @@ const Features = () => {
                 <line x1="16" y1="17" x2="8" y2="17"></line>
                 <polyline points="10 9 9 9 8 9"></polyline>
               </svg>
-              <h3 className="feature-title">Smart Case Summariser</h3>
+              <h3 className="feature-title">Agentic Document Intelligence</h3>
               <p className="feature-desc">
-                500 pages of case documents &mdash; charge sheets, FIRs, witness statements &mdash; 
-                condensed into a clean 1-page brief in under 60 seconds. Powered by OCR + BART/Pegasus NLP models. 
-                Judges arrive at hearings fully prepared.
+                Orchestrated by Mastra, our multi-agent workflow processes massive legal PDFs in parallel. 
+                Using Gemini 1.5 and Amazon Bedrock, LexAgent extracts facts, analyses penal codes, and 
+                identifies liabilities in under 60 seconds.
               </p>
             </div>
           </RevealOnScroll>
@@ -76,11 +76,11 @@ const Features = () => {
               <svg className="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
               </svg>
-              <h3 className="feature-title">Intelligent Precedent Finder</h3>
+              <h3 className="feature-title">Semantic Precedent Search (Qdrant)</h3>
               <p className="feature-desc">
-                Semantic vector search across lakhs of Indian judgements using Sentence Transformers. 
-                Surfaces the top 5 most relevant past cases in under 15 seconds &mdash; with similarity scores 
-                and outcome summaries.
+                Powered by Qdrant Vector Database and Gemini Embeddings, LexAgent performs high-dimensional 
+                semantic RAG across legal databases. Surfaces the top 5 most relevant past cases instantly, 
+                ensuring every argument is backed by verified case law.
               </p>
             </div>
           </RevealOnScroll>
@@ -127,11 +127,11 @@ const Features = () => {
                 <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                 <line x1="12" y1="22.08" x2="12" y2="12"></line>
               </svg>
-              <h3 className="feature-title">Judgement Draft Generator</h3>
+              <h3 className="feature-title">Enkrypt AI Security Guardrails</h3>
               <p className="feature-desc">
-                RAG pipeline combines the case summary, retrieved precedents, and IPC/CrPC sections 
-                to generate a fully structured judgement draft. Facts &rarr; Arguments &rarr; Legal Analysis &rarr; Order. 
-                Drafting time reduced by 80%. Every AI reasoning step is logged and visible.
+                Enterprise-grade security built-in. Input Guards actively block malicious prompt injections. 
+                Output Guards cross-reference all generated citations against retrieved Qdrant facts to 
+                prevent LLM hallucination and ensure absolute legal accuracy.
               </p>
             </div>
           </RevealOnScroll>
@@ -178,11 +178,11 @@ const Features = () => {
                 <line x1="8" y1="2" x2="8" y2="6"></line>
                 <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
-              <h3 className="feature-title">Smart Hearing Scheduler</h3>
+              <h3 className="feature-title">Persistent Secure Enclave</h3>
               <p className="feature-desc">
-                Analyses case readiness using NJDG data. Checks document completeness, party notifications, 
-                and pending requirements. Schedules hearings only when a case is 100% ready. 
-                Eliminates unnecessary adjournments automatically.
+                LexAgent provides a fully secure, ChatGPT-style conversational interface authenticated via Firebase. 
+                Every session, chat history, and uploaded document metadata is persistently stored in Qdrant, 
+                allowing seamless workflow resumption.
               </p>
             </div>
           </RevealOnScroll>
@@ -219,11 +219,11 @@ const Features = () => {
                 <polygon points="23 7 16 12 23 17 23 7"></polygon>
                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
               </svg>
-              <h3 className="feature-title">Secure Virtual Hearing + Biometric Verification</h3>
+              <h3 className="feature-title">Real-Time Text-to-Speech</h3>
               <p className="feature-desc">
-                Full virtual courtroom with facial recognition and voice biometric verification before entry. 
-                AI liveness detection prevents spoofing. WebRTC-powered secure video. 
-                All session logs stored immutably in Delta Lake.
+                Integrated natively with ElevenLabs, LexAgent can instantly read out generated legal briefs, 
+                clause analyses, and precedent summaries. Built with an accessibility-first mindset, 
+                improving the review process for busy legal professionals.
               </p>
             </div>
           </RevealOnScroll>

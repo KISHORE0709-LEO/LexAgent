@@ -17,8 +17,8 @@ const Navbar = () => {
   return (
     <nav className={`navbar-wrapper ${scrolled ? 'navbar-scrolled' : ''}`}>
       <div className="logo-container" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-        <img src="/Logo.png" alt="Mandamus Logo" className="logo-icon" />
-        <span className="logo-text">MANDAMUS</span>
+        <img src="/Logo.png" alt="LexAgent Logo" className="logo-icon" />
+        <span className="logo-text">LEXAGENT</span>
       </div>
 
       <div className="nav-capsule">

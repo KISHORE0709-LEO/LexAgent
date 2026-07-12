@@ -10,8 +10,8 @@ const Footer = () => {
 
           <div className="footer-brand-col">
             <div className="footer-logo">
-              <img src="/Logo.png" alt="Mandamus Logo" className="footer-logo-icon" />
-              <span className="footer-logo-text">MANDAMUS</span>
+              <img src="/Logo.png" alt="LexAgent Logo" className="footer-logo-icon" />
+              <span className="footer-logo-text">LEXAGENT</span>
             </div>
             <p className="footer-desc">
               AI-powered judicial assistance platform solving the court backlog crisis. Enhancing the rule of law through technology.
@@ -24,16 +24,16 @@ const Footer = () => {
 
           <div className="footer-links-col">
             <h4 className="footer-heading">Platform</h4>
-            <a href="#features">Smart Summariser</a>
-            <a href="#features">Precedent Finder</a>
-            <a href="#features">Draft Generator</a>
+            <a href="#features">Agentic Intelligence</a>
+            <a href="#features">Precedent Search</a>
+            <a href="#features">Security Guardrails</a>
           </div>
 
           <div className="footer-links-col">
             <h4 className="footer-heading">Systems</h4>
             <a href="#how-it-works">How It Works</a>
-            <a href="#features">Hearing Scheduler</a>
-            <a href="#features">Virtual Courtroom</a>
+            <a href="#features">Secure Enclave</a>
+            <a href="#features">Real-Time TTS</a>
           </div>
 
           <div className="footer-links-col">
@@ -46,7 +46,7 @@ const Footer = () => {
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; {new Date().getFullYear()} Mandamus. Mandamus is a decision-support tool. All judgements require mandatory human judicial review and approval. AI assists &mdash; judges decide.</p>
+          <p>&copy; {new Date().getFullYear()} LexAgent. LexAgent is a decision-support tool. All judgements require mandatory human judicial review and approval. AI assists &mdash; judges decide.</p>
         </div>
       </div>
     </footer>

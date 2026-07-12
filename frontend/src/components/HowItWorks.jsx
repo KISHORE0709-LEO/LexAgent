@@ -8,7 +8,7 @@ const HowItWorks = () => {
       <div className="section-padding">
         <RevealOnScroll className="fade-in">
           <div className="hiw-header">
-            <h2 className="hiw-headline">How Mandamus Works</h2>
+            <h2 className="hiw-headline">How LexAgent Works</h2>
             <p className="hiw-subtitle">Four stages. From raw case data to judge-approved output.</p>
           </div>
         </RevealOnScroll>
@@ -34,15 +34,15 @@ const HowItWorks = () => {
               <div className="hiw-step step-up">
                 <div className="step-circle glow">1</div>
                 <h4 className="step-title">Ingest</h4>
-                <p className="step-desc">Case files ingested via Auto Loader into Delta Lake. OCR converts scanned PDFs.</p>
+                <p className="step-desc">Case PDFs uploaded securely. Mastra orchestrates specialized agents for fact extraction.</p>
               </div>
             </RevealOnScroll>
 
             <RevealOnScroll className="scale-up" delay={400} style={{ flex: 1 }}>
               <div className="hiw-step step-down">
                 <div className="step-circle glow">2</div>
-                <h4 className="step-title">Analyse</h4>
-                <p className="step-desc">NLP summarises documents. Vector embeddings retrieve similar precedents.</p>
+                <h4 className="step-title">Analyze</h4>
+                <p className="step-desc">Qdrant vector memory instantly retrieves relevant precedents using Gemini 1.5 embeddings.</p>
               </div>
             </RevealOnScroll>
 
@@ -50,7 +50,7 @@ const HowItWorks = () => {
               <div className="hiw-step step-up">
                 <div className="step-circle glow">3</div>
                 <h4 className="step-title">Generate</h4>
-                <p className="step-desc">RAG pipeline produces structured draft with confidence score and citations.</p>
+                <p className="step-desc">Amazon Bedrock drafts responses. Enkrypt AI Input/Output guards prevent hallucinations.</p>
               </div>
             </RevealOnScroll>
 
@@ -58,7 +58,7 @@ const HowItWorks = () => {
               <div className="hiw-step step-down">
                 <div className="step-circle glow">4</div>
                 <h4 className="step-title">Review</h4>
-                <p className="step-desc">Judge reviews, edits, approves. Immutable audit trail logged. Nothing approved without human sign-off.</p>
+                <p className="step-desc">Real-time SSE streaming delivers insights. The Judge reviews and edits—nothing is approved without human sign-off.</p>
               </div>
             </RevealOnScroll>
           </div>

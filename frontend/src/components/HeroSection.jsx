@@ -15,7 +15,7 @@ const HeroSection = () => {
             Is Justice Denied.
           </h1>
           <p className="hero-subheadline">
-            Mandamus gives judges the tools to change that &mdash; today.
+            LexAgent gives judges the tools to change that &mdash; today.
           </p>
           <div className="hero-cta-group">
             <button 

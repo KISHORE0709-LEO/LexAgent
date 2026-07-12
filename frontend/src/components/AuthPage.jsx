@@ -85,8 +85,8 @@ const AuthPage = () => {
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '36px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-              <img src="/Logo.png" alt="Mandamus Logo" style={{ height: '40px' }} />
-              <span style={{ fontSize: '24px', fontWeight: '800', color: '#fff', letterSpacing: '3px' }}>MANDAMUS</span>
+              <img src="/Logo.png" alt="LexAgent Logo" style={{ height: '40px' }} />
+              <span style={{ fontSize: '24px', fontWeight: '800', color: '#fff', letterSpacing: '3px' }}>LEXAGENT</span>
             </div>
             <div className="secure-badge">
               <ShieldCheck size={12} />
@@ -96,7 +96,7 @@ const AuthPage = () => {
               {authMode === 'signin' ? 'Welcome Back' : 'Create Account'}
             </h2>
             <p className="auth-subtitle" style={{ fontSize: '14px' }}>
-              {authMode === 'signin' ? 'Sign in to access the Mandamus platform.' : 'Register to get started with Mandamus.'}
+              {authMode === 'signin' ? 'Sign in to access the LexAgent platform.' : 'Register to get started with LexAgent.'}
             </p>
           </div>
 
