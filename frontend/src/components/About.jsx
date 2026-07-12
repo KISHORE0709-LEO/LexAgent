@@ -19,19 +19,6 @@ const team = [
         },
         accent: "accent-red"
     },
-    {
-        name: "CH V SNEHA",
-        role: "Developer",
-        avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Mia&backgroundColor=transparent",
-        socials: { 
-            github: "https://github.com/chv-sneha", 
-            linkedin: "https://www.linkedin.com/in/ch-v-sneha-6ba7792a0/", 
-            portfolio: "https://sneha-s-digital-canvas.vercel.app/", 
-            twitter: "https://x.com/chvsneha2310", 
-            email: "chvsneha2310@gmail.com" 
-        },
-        accent: "accent-red-light"
-    }
 ];
 
 // Helper for Brand Icons

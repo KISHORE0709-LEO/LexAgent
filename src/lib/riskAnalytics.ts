@@ -62,6 +62,20 @@ export async function analyzeRiskOverrides(): Promise<RecalibrationSuggestion> {
       }
     }
 
+    const historyRows = points.map(point => {
+      const p = point.payload as any;
+      return {
+        id: point.id,
+        date: new Date(p.timestamp || Date.now()).toISOString().split('T')[0],
+        category: p.category || "General",
+        jurisdiction: p.jurisdiction || "Unknown",
+        partner: "Current User",
+        action: p.status === 'rejected' ? 'Rejected' : p.status === 'edited' ? 'Edited' : 'Approved',
+        risk: 'Medium', // We can derive this if needed
+        note: p.partner_reasoning || p.original_clause?.substring(0, 50) + "..."
+      };
+    });
+
     return {
       total_records_analyzed: points.length,
       total_overrides: totalOverrides,
@@ -69,6 +83,7 @@ export async function analyzeRiskOverrides(): Promise<RecalibrationSuggestion> {
       frequent_overrides_by_category: categoryOverrides,
       rejections_by_jurisdiction: jurisdictionRejections,
       weight_recalibration_suggestions: weightRecalibration,
+      history: historyRows,
     };
   } catch (error) {
     console.error("Failed to analyze risk overrides from Qdrant:", error);

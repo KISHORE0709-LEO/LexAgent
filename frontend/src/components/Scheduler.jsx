@@ -51,10 +51,10 @@ export default function Scheduler({ onTabChange }) {
     attachDraft: hasDraft,
     parties: summary.petitioner && summary.respondent
       ? `${summary.petitioner} · ${summary.respondent}` : '',
-    petitioner_lawyer_email: '1nt23cb012.sneha@nmit.ac.in',
-    petitioner_lawyer_name: 'arha',
-    respondent_lawyer_email: 'chvsneha23@gmail.com',
-    respondent_lawyer_name: 'CH V Sneha',
+    petitioner_lawyer_email: user?.email || 'petitioner@example.com',
+    petitioner_lawyer_name: user?.displayName || 'Petitioner Counsel',
+    respondent_lawyer_email: 'respondent@example.com',
+    respondent_lawyer_name: 'Respondent Counsel',
   });
 
   const [submitted, setSubmitted] = useState(false);
@@ -90,10 +90,10 @@ export default function Scheduler({ onTabChange }) {
 
   // Re-fill form when case data arrives
   useEffect(() => {
-    const petitioner_lawyer_email = summary.petitioner_lawyer_email || state.active_case?.petitioner_lawyer_email || '1nt23cb012.sneha@nmit.ac.in';
-    const petitioner_lawyer_name = summary.petitioner_lawyer_name || state.active_case?.petitioner_lawyer_name || 'arha';
-    const respondent_lawyer_email = summary.respondent_lawyer_email || state.active_case?.respondent_lawyer_email || 'chvsneha23@gmail.com';
-    const respondent_lawyer_name = summary.respondent_lawyer_name || state.active_case?.respondent_lawyer_name || 'CH V Sneha';
+    const petitioner_lawyer_email = summary.petitioner_lawyer_email || state.active_case?.petitioner_lawyer_email || user?.email || 'petitioner@example.com';
+    const petitioner_lawyer_name = summary.petitioner_lawyer_name || state.active_case?.petitioner_lawyer_name || user?.displayName || 'Petitioner Counsel';
+    const respondent_lawyer_email = summary.respondent_lawyer_email || state.active_case?.respondent_lawyer_email || 'respondent@example.com';
+    const respondent_lawyer_name = summary.respondent_lawyer_name || state.active_case?.respondent_lawyer_name || 'Respondent Counsel';
     
     setForm(f => ({
       ...f,

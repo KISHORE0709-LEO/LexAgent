@@ -650,3 +650,45 @@ export async function deleteProject(projectId: string) {
     throw error;
   }
 }
+
+/**
+ * Saves user configuration (e.g. risk weights, thresholds) in Qdrant.
+ */
+export async function saveUserConfig(userId: string, config: any) {
+  try {
+    const pointId = generateDeterministicUUID("config-" + userId);
+    const dummyVector = new Array(EMBEDDING_DIM).fill(0);
+    const payload = {
+      type: "config",
+      userId,
+      config,
+      timestamp: Date.now(),
+    };
+    await qdrant.upsert(SESSIONS_COLLECTION, {
+      points: [{ id: pointId, vector: dummyVector, payload }],
+    });
+    console.log(`Saved config to Qdrant for user: ${userId}`);
+  } catch (error) {
+    console.error(`Failed to save config for user ${userId} to Qdrant:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Retrieves user configuration from Qdrant.
+ */
+export async function getUserConfig(userId: string): Promise<any | null> {
+  try {
+    const pointId = generateDeterministicUUID("config-" + userId);
+    const result = await qdrant.retrieve(SESSIONS_COLLECTION, {
+      ids: [pointId],
+    });
+    if (result.length > 0 && result[0].payload) {
+      return result[0].payload.config;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Failed to retrieve config for user ${userId}:`, error);
+    return null;
+  }
+}

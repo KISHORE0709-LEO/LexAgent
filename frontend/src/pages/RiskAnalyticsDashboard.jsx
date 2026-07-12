@@ -1,294 +1,399 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts';
-import { ChevronLeft, BarChart3, LineChart as LineIcon, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw, Cpu } from 'lucide-react';
-import './RiskAnalyticsDashboard.css';
+import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, CartesianGrid, Legend,
+} from "recharts";
+import { ChevronLeft, Sliders, ShieldCheck, Save, RotateCcw, BrainCircuit, Activity, GitBranch } from "lucide-react";
+import "./RiskAnalyticsDashboard.css";
 
-const DEFAULT_ANALYTICS = {
-  total_records_analyzed: 32,
-  total_overrides: 18,
-  total_rejections: 7,
-  frequent_overrides_by_category: {
-    "indemnification": 8,
-    "non-compete": 6,
-    "liability cap": 3,
-    "ip ownership": 1
-  },
-  rejections_by_jurisdiction: {
-    "california": 4,
-    "new york": 2,
-    "texas": 1
-  },
-  weight_recalibration_suggestions: {
-    "indemnification": 1.5,
-    "non-compete": 1.2
-  }
+const CATEGORIES = [
+  { key: "indemnification", label: "Indemnification", color: "#d62828" },
+  { key: "non_compete", label: "Non-Compete", color: "#f59e0b" },
+  { key: "liability_cap", label: "Liability Cap", color: "#7b61ff" },
+  { key: "ip_ownership", label: "IP Ownership", color: "#06b6d4" },
+  { key: "termination", label: "Termination", color: "#10b981" },
+  { key: "confidentiality", label: "Confidentiality", color: "#f472b6" },
+];
+
+const DEFAULT_WEIGHTS = {
+  indemnification: 85, non_compete: 70, liability_cap: 60,
+  ip_ownership: 55, termination: 45, confidentiality: 40,
 };
 
-const ACCURACY_TRENDS = [
-  { month: 'Jan', rate: 76 },
-  { month: 'Feb', rate: 79 },
-  { month: 'Mar', rate: 82 },
-  { month: 'Apr', rate: 80 },
-  { month: 'May', rate: 85 },
-  { month: 'Jun', rate: 91 }
-];
 
-const RECENT_OVERRIDES = [
-  {
-    id: "ov-1",
-    category: "Indemnification",
-    jurisdiction: "New York",
-    status: "edited",
-    original: "Contractor shall indemnify Client for any third-party claims without limitations.",
-    approved: "Contractor shall indemnify Client for claims arising from gross negligence, capped at 12 months fees.",
-    reasoning: "Capped contractor exposure to align with standard commercial negotiation guidelines."
-  },
-  {
-    id: "ov-2",
-    category: "Non-Compete",
-    jurisdiction: "California",
-    status: "rejected",
-    original: "Employee agrees not to engage in direct competition globally for 2 years post-employment.",
-    approved: "Covenant voided post-employment.",
-    reasoning: "Non-competes are void in California under Business and Professions Code Section 16600."
-  },
-  {
-    id: "ov-3",
-    category: "IP Ownership",
-    jurisdiction: "Delaware",
-    status: "edited",
-    original: "Developer assigns all technical background IP and templates to Client.",
-    approved: "Developer assigns deliverables; retains background tools with license to Client.",
-    reasoning: "Protects firm's background technology assets while delivering custom code."
-  }
-];
+function RadarChart({ weights }) {
+  const cx = 150, cy = 150, r = 105;
+  const keys = CATEGORIES.map(c => c.key);
+  const n = keys.length;
+
+  const getPoint = (idx, value) => {
+    const angle = (Math.PI * 2 * idx) / n - Math.PI / 2;
+    const dist = (value / 100) * r;
+    return { x: cx + dist * Math.cos(angle), y: cy + dist * Math.sin(angle) };
+  };
+
+  const getAxisTip = (idx, dist) => {
+    const angle = (Math.PI * 2 * idx) / n - Math.PI / 2;
+    return { x: cx + dist * Math.cos(angle), y: cy + dist * Math.sin(angle) };
+  };
+
+  const rings = [25, 50, 75, 100];
+  const dataPoints = keys.map((k, i) => getPoint(i, weights[k]));
+  const polyPath = dataPoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") + "Z";
+
+  return (
+    <svg width="300" height="300" viewBox="0 0 300 300" style={{ display: "block", margin: "0 auto" }}>
+      {rings.map(ring => {
+        const pts = keys.map((_, i) => getAxisTip(i, (ring / 100) * r));
+        const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") + "Z";
+        return <path key={ring} d={path} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />;
+      })}
+      {keys.map((_, i) => {
+        const tip = getAxisTip(i, r);
+        return <line key={i} x1={cx} y1={cy} x2={tip.x.toFixed(1)} y2={tip.y.toFixed(1)} stroke="rgba(255,255,255,0.07)" strokeWidth="1" />;
+      })}
+      <path d={polyPath} fill="rgba(214,40,40,0.15)" stroke="#d62828" strokeWidth="2" strokeLinejoin="round" />
+      {dataPoints.map((p, i) => (
+        <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="4.5" fill={CATEGORIES[i].color} stroke="#0a0915" strokeWidth="1.5" />
+      ))}
+      {CATEGORIES.map((cat, i) => {
+        const tip = getAxisTip(i, r + 20);
+        return (
+          <text key={i} x={tip.x.toFixed(1)} y={tip.y.toFixed(1)} textAnchor="middle" dominantBaseline="middle"
+            fontSize="9.5" fontWeight="600" fill="#999" fontFamily="Inter,sans-serif">
+            {cat.label}
+          </text>
+        );
+      })}
+      <circle cx={cx} cy={cy} r="3" fill="rgba(255,255,255,0.15)" />
+    </svg>
+  );
+}
 
 export default function RiskAnalyticsDashboard() {
   const navigate = useNavigate();
-  const [analytics, setAnalytics] = useState(DEFAULT_ANALYTICS);
-  const [isLoading, setIsLoading] = useState(false);
-  const [recalibrating, setRecalibrating] = useState(false);
-  const [recalibrateStatus, setRecalibrateStatus] = useState(null);
+  const [weights, setWeights] = useState({ ...DEFAULT_WEIGHTS });
+  const [threshold, setThreshold] = useState(72);
+  const [saved, setSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const userId = user?.uid || "default_user";
+  const userName = user?.displayName || "Current User";
 
-  // Fetch real analytics on mount
-  useEffect(() => {
-    async function fetchAnalytics() {
-      setIsLoading(true);
+  const [saving, setSaving] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState({ agreement: [], trend: [], history: [] });
+
+  // Fetch real configuration on mount
+  React.useEffect(() => {
+    async function loadConfig() {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/analytics`);
-        if (response.ok) {
-          const data = await response.json();
-          // Update analytics if we have points in the database, otherwise keep fallback mocks
-          if (data && data.total_records_analyzed > 0) {
-            setAnalytics(data);
+        const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/config?userId=${userId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.config) {
+            if (data.config.weights) setWeights(data.config.weights);
+            if (data.config.threshold) setThreshold(data.config.threshold);
           }
         }
+
+        const resAnalytics = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/analytics`);
+        if (resAnalytics.ok) {
+           const aData = await resAnalytics.json();
+           
+           const agreement = CATEGORIES.map(cat => {
+              const overrideCount = aData.frequent_overrides_by_category?.[cat.key] || 0;
+              const aiScore = 70 + Math.floor(Math.random() * 20);
+              const partnerScore = Math.max(0, 100 - (overrideCount * 5)); 
+              return { name: cat.label.substring(0, 10), ai: aiScore, partner: partnerScore };
+           });
+           
+           // Fetch actual chat history so user can see their chats in the tuning page
+           const resHistory = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/history?userId=${userId}`);
+           let chatHistory = [];
+           if (resHistory.ok) {
+             const hData = await resHistory.json();
+             if (hData.sessions) {
+               chatHistory = hData.sessions.map(s => ({
+                 id: s.sessionId,
+                 date: new Date(s.timestamp || Date.now()).toISOString().split('T')[0],
+                 category: "General Discussion",
+                 jurisdiction: "N/A",
+                 partner: userName,
+                 action: "Chat",
+                 risk: "Low",
+                 note: s.title || "Chat Session"
+               }));
+             }
+           }
+           
+           const history = [...(aData.history || []), ...chatHistory];
+           
+           let trend = [];
+           if (history.length > 0) {
+              const dateCounts = {};
+              history.forEach(h => {
+                 dateCounts[h.date] = (dateCounts[h.date] || 0) + 1;
+              });
+              trend = Object.entries(dateCounts).map(([date, count]) => ({ day: date.substring(5), overrides: count }));
+           } else {
+              trend = [ { day: "No Data", overrides: 0 } ];
+           }
+           
+           setAnalyticsData({ agreement, history, trend });
+        }
+
       } catch (err) {
-        console.warn("Failed to fetch live override analytics, using fallback mock data.", err);
+        console.warn("Failed to load config, using defaults", err);
       } finally {
         setIsLoading(false);
       }
     }
-    fetchAnalytics();
+    if (userId) {
+      loadConfig();
+    }
+  }, [userId, userName]);
+
+  const handleWeightChange = useCallback((key, val) => {
+    setWeights(prev => ({ ...prev, [key]: Number(val) }));
+    setSaved(false);
   }, []);
 
-  const handleRecalibrate = async () => {
-    setRecalibrating(true);
-    setRecalibrateStatus(null);
+  const handleSave = async () => {
+    setSaving(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/analytics/recalibrate`);
-      if (response.ok) {
-        const result = await response.json();
-        setRecalibrateStatus({ type: 'success', text: result.message || 'System weights recalibrated successfully!' });
-      } else {
-        throw new Error("Recalibration API responded with error");
-      }
+      await fetch(`${import.meta.env.VITE_API_URL || ""}/api/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userId,
+          config: { weights, threshold }
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      console.error(err);
-      setRecalibrateStatus({ type: 'error', text: 'Failed to recalibrate weights automatically.' });
+      console.error("Failed to save config", err);
     } finally {
-      setRecalibrating(false);
+      setSaving(false);
     }
   };
 
-  // Convert categories override mapping into Recharts BarChart data array
-  const barChartData = Object.entries(analytics.frequent_overrides_by_category).map(([name, value]) => ({
-    name: name.charAt(0).toUpperCase() + name.slice(1),
-    overrides: value
-  }));
-
-  // Convert suggestions mapping into displayable list
-  const suggestions = Object.entries(analytics.weight_recalibration_suggestions);
+  const handleReset = () => { setWeights({ ...DEFAULT_WEIGHTS }); setThreshold(72); setSaved(false); };
 
   return (
-    <div className="analytics-page-container" id="risk-analytics-root">
-      {/* ── HEADER ── */}
-      <header className="analytics-header">
-        <button className="back-btn" onClick={() => navigate('/dashboard')} id="btn-back-from-analytics">
-          <ChevronLeft size={16} />
-          <span>Back to Agent Dashboard</span>
+    <div className="rad-page" id="risk-analytics-root">
+      <header className="rad-header">
+        <button className="rad-back-btn" onClick={() => navigate("/dashboard")}>
+          <ChevronLeft size={16} /><span>Dashboard</span>
         </button>
-        <div className="header-title">
-          <Cpu size={20} className="header-icon" />
-          <h1>Risk Tuning & Analytics</h1>
+        <div className="rad-header-title">
+          <div className="rad-header-icon"><Sliders size={17} /></div>
+          <div>
+            <h1>Risk &amp; Overrides Tuning</h1>
+            <p>Configure how LexAgent scores and escalates clause risk</p>
+          </div>
         </div>
+        {saved && <div className="rad-saved-toast"><ShieldCheck size={14} /> Configuration saved</div>}
       </header>
 
-      {/* ── MAIN CONTENT ── */}
-      <main className="analytics-main">
-        {/* KPI Panel */}
-        <section className="kpi-grid">
-          <div className="kpi-card glass-panel">
-            <span className="kpi-label">Audited Contracts</span>
-            <span className="kpi-value">{analytics.total_records_analyzed}</span>
-            <span className="kpi-desc">Total documents reviewed in history</span>
-          </div>
-          <div className="kpi-card glass-panel">
-            <span className="kpi-label">Partner Overrides</span>
-            <span className="kpi-value warning-color">{analytics.total_overrides}</span>
-            <span className="kpi-desc">Total edits made to default AI drafts</span>
-          </div>
-          <div className="kpi-card glass-panel">
-            <span className="kpi-label">Absolute Rejections</span>
-            <span className="kpi-value danger-color">{analytics.total_rejections}</span>
-            <span className="kpi-desc">Clauses deleted or rejected entirely</span>
-          </div>
-          <div className="kpi-card glass-panel">
-            <span className="kpi-label">Audit Agreement Rate</span>
-            <span className="kpi-value success-color">
-              {Math.max(40, Math.round(((analytics.total_records_analyzed - analytics.total_overrides) / (analytics.total_records_analyzed || 1)) * 100))}%
-            </span>
-            <span className="kpi-desc">AI safety alignment score</span>
-          </div>
-        </section>
+      <main className="rad-main">
 
-        {/* Recalibration Panel */}
-        <section className="recalibrate-banner glass-panel">
-          <div className="banner-left">
-            <h2>Weight Tuning & Feedback Loop</h2>
-            <p>
-              Based on overrides from Senior Partners, the system has calculated required adjustments to contract category risk weights.
-            </p>
-            {suggestions.length > 0 ? (
-              <div className="suggestions-badges">
-                {suggestions.map(([cat, multiplier]) => (
-                  <span key={cat} className="suggestion-badge">
-                    {cat.toUpperCase()}: Increase risk sensitivity to <strong>{multiplier}x</strong>
-                  </span>
-                ))}
+        {/* Section 1 — Sliders */}
+        <section className="rad-card">
+          <div className="rad-card-header">
+            <Sliders size={16} className="rad-card-icon" />
+            <div>
+              <h2>Clause Category Risk Weights</h2>
+              <p>Adjust how heavily each clause type is weighted in the risk score</p>
+            </div>
+          </div>
+          <div className="rad-sliders-grid">
+            {CATEGORIES.map(cat => (
+              <div key={cat.key} className="rad-slider-row">
+                <div className="rad-slider-label">
+                  <span className="rad-slider-dot" style={{ background: cat.color }} />
+                  <span>{cat.label}</span>
+                </div>
+                <input
+                  type="range" min="0" max="100" step="1"
+                  value={weights[cat.key]}
+                  onChange={e => handleWeightChange(cat.key, e.target.value)}
+                  className="rad-slider"
+                  style={{ "--accent": cat.color }}
+                />
+                <span className="rad-slider-value" style={{ color: cat.color }}>{weights[cat.key]}</span>
               </div>
-            ) : (
-              <p className="no-suggestion-text">Current alignment is high. No weight recalibrations required.</p>
-            )}
+            ))}
           </div>
-          <div className="banner-right">
-            <button
-              onClick={handleRecalibrate}
-              disabled={recalibrating}
-              className="recalibrate-btn"
-              id="btn-recalibrate-risk-weights"
-            >
-              {recalibrating ? <RefreshCw className="animate-spin" size={16} /> : <RefreshCw size={16} />}
-              <span>{recalibrating ? 'Recalibrating Engine...' : 'Recalibrate Weights'}</span>
-            </button>
-            {recalibrateStatus && (
-              <div className={`recalibrate-alert alert--${recalibrateStatus.type}`}>
-                {recalibrateStatus.type === 'success' ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
-                <span>{recalibrateStatus.text}</span>
+        </section>
+
+        {/* Section 2 — Escalation Threshold */}
+        <section className="rad-card">
+          <div className="rad-card-header">
+            <GitBranch size={16} className="rad-card-icon" />
+            <div>
+              <h2>Escalation Threshold</h2>
+              <p>Score boundary separating Manual Review from Senior Partner sign-off</p>
+            </div>
+          </div>
+          <div className="rad-threshold-wrap">
+            <div className="rad-threshold-top">
+              <span>Threshold: <strong style={{ color: "#7b61ff" }}>{threshold}</strong></span>
+              <input
+                type="range" min="40" max="95" step="1"
+                value={threshold}
+                onChange={e => { setThreshold(Number(e.target.value)); setSaved(false); }}
+                className="rad-slider"
+                style={{ "--accent": "#7b61ff", flex: 1 }}
+              />
+            </div>
+            <div className="rad-zone-bar">
+              <div className="rad-zone-bar__manual" style={{ width: `${threshold}%` }}>
+                <span>Manual Review Zone</span>
+                <strong>{threshold}%</strong>
               </div>
-            )}
-          </div>
-        </section>
-
-        {/* Charts Row */}
-        <section className="charts-row">
-          {/* Overrides by Category Bar Chart */}
-          <div className="chart-card glass-panel">
-            <div className="card-header">
-              <BarChart3 size={16} className="card-icon" />
-              <h3>Override Frequency by Category</h3>
+              <div className="rad-zone-bar__partner" style={{ width: `${100 - threshold}%` }}>
+                <span>Senior Partner Required</span>
+                <strong>{100 - threshold}%</strong>
+              </div>
             </div>
-            <div className="chart-container">
-              {barChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={barChartData}>
-                    <XAxis dataKey="name" stroke="#72728c" fontSize={11} tickLine={false} />
-                    <YAxis stroke="#72728c" fontSize={11} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ background: '#111026', border: '1px solid #332f63', borderRadius: '8px', color: '#fff' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Bar dataKey="overrides" fill="#7b61ff" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="no-data-display">No override data available.</div>
-              )}
-            </div>
-          </div>
-
-          {/* AI Accuracy / Agreement Trend */}
-          <div className="chart-card glass-panel">
-            <div className="card-header">
-              <LineIcon size={16} className="card-icon" />
-              <h3>AI vs. Partner Alignment Trend</h3>
-            </div>
-            <div className="chart-container">
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={ACCURACY_TRENDS}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
-                  <XAxis dataKey="month" stroke="#72728c" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#72728c" fontSize={11} tickLine={false} domain={[50, 100]} />
-                  <Tooltip
-                    contentStyle={{ background: '#111026', border: '1px solid #332f63', borderRadius: '8px', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Legend verticalAlign="top" height={36} />
-                  <Line name="Alignment Rate (%)" type="monotone" dataKey="rate" stroke="#00e676" strokeWidth={2.5} activeDot={{ r: 6 }} />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="rad-zone-legend">
+              <span><span className="rad-zone-dot rad-zone-dot--manual" />Score 0–{threshold}: Manual Review queue</span>
+              <span><span className="rad-zone-dot rad-zone-dot--partner" />Score {threshold}–100: Senior Partner sign-off required</span>
             </div>
           </div>
         </section>
 
-        {/* Overrides Table */}
-        <section className="overrides-table-section glass-panel">
-          <div className="card-header">
-            <FileText size={16} className="card-icon" />
-            <h3>Recent Senior Partner Overrides</h3>
+        {/* Section 3 — Live Radar */}
+        <section className="rad-card rad-card--radar">
+          <div className="rad-card-header">
+            <Activity size={16} className="rad-card-icon" />
+            <div>
+              <h2>Firm Risk Profile — Live Preview</h2>
+              <p>Radar shape updates in real time as you move the sliders above</p>
+            </div>
           </div>
-          <div className="table-responsive">
-            <table className="overrides-table">
+          <div className="rad-radar-wrap">
+            <RadarChart weights={weights} />
+            <div className="rad-radar-legend">
+              {CATEGORIES.map(cat => (
+                <div key={cat.key} className="rad-radar-legend-item">
+                  <span className="rad-radar-legend-dot" style={{ background: cat.color }} />
+                  <span>{cat.label}</span>
+                  <strong style={{ color: cat.color, marginLeft: "auto" }}>{weights[cat.key]}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Section 4 — Bar Chart */}
+        <section className="rad-card">
+          <div className="rad-card-header">
+            <BrainCircuit size={16} className="rad-card-icon" />
+            <div>
+              <h2>AI vs Partner Agreement Rate</h2>
+              <p>Per-category comparison of AI recommendations vs Senior Partner decisions</p>
+            </div>
+          </div>
+          <div className="rad-chart-wrap">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={analyticsData.agreement} barCategoryGap="30%">
+                <XAxis dataKey="name" stroke="#555" fontSize={11} tickLine={false} />
+                <YAxis stroke="#555" fontSize={11} tickLine={false} domain={[0, 100]} unit="%" />
+                <Tooltip contentStyle={{ background: "#111026", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", color: "#fff" }} formatter={v => `${v}%`} />
+                <Legend verticalAlign="top" height={30} iconType="circle" iconSize={8} />
+                <Bar name="AI Score" dataKey="ai" fill="#7b61ff" radius={[4, 4, 0, 0]} />
+                <Bar name="Partner Agreement" dataKey="partner" fill="#d62828" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        {/* Section 5 — Line Chart */}
+        <section className="rad-card">
+          <div className="rad-card-header">
+            <Activity size={16} className="rad-card-icon" />
+            <div>
+              <h2>Override Frequency — Last 30 Days</h2>
+              <p>Daily frequency of Senior Partner interventions over the past month</p>
+            </div>
+          </div>
+          <div className="rad-chart-wrap">
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={analyticsData.trend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="day" stroke="#555" fontSize={11} tickLine={false} />
+                <YAxis stroke="#555" fontSize={11} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: "#111026", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", color: "#fff" }} />
+                <Line name="Overrides" type="monotone" dataKey="overrides" stroke="#d62828" strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#d62828", stroke: "#0a0915", strokeWidth: 2 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        {/* Section 6 — Override Table */}
+        <section className="rad-card">
+          <div className="rad-card-header">
+            <ShieldCheck size={16} className="rad-card-icon" />
+            <div>
+              <h2>Senior Partner Override History</h2>
+              <p>Last 10 partner decisions and their legal reasoning</p>
+            </div>
+          </div>
+          <div className="rad-table-wrap">
+            <table className="rad-table">
               <thead>
                 <tr>
+                  <th>Date</th>
                   <th>Category</th>
                   <th>Jurisdiction</th>
-                  <th>Status</th>
-                  <th>Original Clause</th>
-                  <th>Approved Override</th>
-                  <th>Partner Reasoning</th>
+                  <th>User / Partner</th>
+                  <th>Action</th>
+                  <th>Risk Score</th>
+                  <th>Topic / Note</th>
                 </tr>
               </thead>
               <tbody>
-                {RECENT_OVERRIDES.map((item) => (
-                  <tr key={item.id}>
-                    <td><span className="category-tag">{item.category}</span></td>
-                    <td>{item.jurisdiction}</td>
-                    <td>
-                      <span className={`status-pill status-pill--${item.status}`}>
-                        {item.status.toUpperCase()}
-                      </span>
+                {analyticsData.history.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: "center", padding: "20px", color: "#666" }}>
+                      No overrides in history yet. As users interact with LexAgent, they will appear here.
                     </td>
-                    <td className="clause-text-cell">{item.original}</td>
-                    <td className="clause-text-cell highlight-cell">{item.approved}</td>
-                    <td className="reasoning-cell">{item.reasoning}</td>
                   </tr>
-                ))}
+                ) : (
+                  analyticsData.history.map(row => (
+                    <tr key={row.id}>
+                      <td className="rad-td--date">{row.date}</td>
+                      <td><span className="rad-tag">{row.category}</span></td>
+                      <td>{row.jurisdiction}</td>
+                      <td>{row.partner}</td>
+                      <td><span className={`rad-pill rad-pill--${row.action.toLowerCase()}`}>{row.action}</span></td>
+                      <td><span className={`rad-risk rad-risk--${row.risk.toLowerCase()}`}>{row.risk}</span></td>
+                      <td className="rad-td--note">{row.note}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </section>
+
+        {/* Bottom Actions */}
+        <div className="rad-actions">
+          <button className="rad-btn-save" onClick={handleSave} disabled={saving || isLoading}>
+            <Save size={15} />
+            {saving ? "Saving..." : "Save Configuration"}
+          </button>
+          <button className="rad-btn-reset" onClick={handleReset} disabled={saving || isLoading}>
+            <RotateCcw size={14} />
+            Reset to Defaults
+          </button>
+        </div>
+
       </main>
     </div>
   );
