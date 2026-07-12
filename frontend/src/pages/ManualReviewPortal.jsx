@@ -81,6 +81,38 @@ export default function ManualReviewPortal() {
   };
 
   const handleSave = () => {
+    let content = `Case ID: ${analysisData.case_id}\n`;
+    content += `Jurisdiction: ${analysisData.court_name}\n`;
+    content += `Petitioner: ${analysisData.petitioner}\n`;
+    content += `Respondent: ${analysisData.respondent}\n\n`;
+    content += `Summary Overview:\n${analysisData.plain_summary}\n\n`;
+
+    if (analysisData.key_facts?.length > 0) {
+      content += `Key Facts:\n${analysisData.key_facts.join('\n')}\n\n`;
+    }
+
+    content += `--- CLAUSE ANALYSIS ---\n\n`;
+    clauses.forEach((c, idx) => {
+      content += `Clause #${idx + 1} [${(c.riskLevel || 'LOW').toUpperCase()} RISK]\n`;
+      content += `Original: ${c.originalClause}\n`;
+      content += `Revised Draft: ${edits[idx] !== undefined ? edits[idx] : (c.revisedClause || c.originalClause)}\n`;
+      content += `Comments: ${comments[idx] || "None"}\n`;
+      if (escalated[idx] || (c.riskLevel === 'high' && escalated[idx])) {
+        content += `Status: ESCALATED TO SENIOR PARTNER\n`;
+      }
+      content += `\n`;
+    });
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Legal_Review_${analysisData.case_id}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
@@ -317,12 +349,12 @@ export default function ManualReviewPortal() {
                             <p style={{ margin: '0 0 8px 0' }}>{clause.reasoning}</p>
                             {clause.groundingSources?.length > 0 && (
                               <div className="grounding-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px' }}>
-                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#7b61ff', textTransform: 'uppercase' }}>Grounded In Precedents</span>
+                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#ff4d4d', textTransform: 'uppercase' }}>Grounded In Precedents</span>
                                 {clause.groundingSources.map((source, sIdx) => (
-                                  <div key={sIdx} style={{ fontSize: '12px', borderLeft: '2px solid #7b61ff', paddingLeft: '8px' }}>
+                                  <div key={sIdx} style={{ fontSize: '12px', borderLeft: '2px solid #ff4d4d', paddingLeft: '8px' }}>
                                     <strong style={{ color: '#eee' }}>{source}</strong>
                                     {clause.whyPrecedent?.[sIdx] && (
-                                      <div style={{ fontSize: '11px', color: '#7b61ff', fontStyle: 'italic' }}>Relevance: {clause.whyPrecedent[sIdx]}</div>
+                                      <div style={{ fontSize: '11px', color: '#ff6b6b', fontStyle: 'italic' }}>Relevance: {clause.whyPrecedent[sIdx]}</div>
                                     )}
                                   </div>
                                 ))}

@@ -640,6 +640,32 @@
 .guard-status--blocked { color: #d62828; }
 .guard-status--passed  { color: #10b981; }
 
+.audio-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(214, 40, 40, 0.08);
+  border: 1px solid rgba(214, 40, 40, 0.25);
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.audio-play-btn:hover {
+  background: rgba(214, 40, 40, 0.15);
+  border-color: rgba(214, 40, 40, 0.4);
+  color: #fff;
+}
+.audio-play-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ─── Thinking indicator ──────────────────────────────────── */
 .thinking-indicator {
   display: flex;

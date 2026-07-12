@@ -4,7 +4,7 @@ import {
   BrainCircuit, X, FileText, AlertTriangle, CheckCircle2,
   ChevronLeft, ChevronRight, Mic, MicOff, Link, MoreHorizontal,
   Folder, Scale, User, Search, Pin, Archive, Trash2, Edit3,
-  Copy, Download, FolderPlus, ExternalLink, PanelLeft, PanelLeftClose
+  Copy, Download, FolderPlus, ExternalLink, PanelLeft, PanelLeftClose, Volume2, Square
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -137,17 +137,21 @@ export default function AgentDashboard() {
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+  const audioRef = useRef(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [attachedFile, setAttachedFile] = useState(null);
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [chatTitle, setChatTitle] = useState('');
   const [detectedJurisdiction, setDetectedJurisdiction] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState("English");
+  const recognitionRef = useRef(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   
   // Dynamic history and project states
   const [sessions, setSessions] = useState([]);
@@ -160,6 +164,57 @@ export default function AgentDashboard() {
   const [movingSessionId, setMovingSessionId] = useState(null);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let text = '';
+        for (let i = 0; i < event.results.length; i++) {
+          text += event.results[i][0].transcript;
+        }
+        setInputText(text);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleRecording = () => {
+    if (!recognitionRef.current) {
+      alert("Your browser does not support speech recognition.");
+      return;
+    }
+    
+    if (isRecording) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    } else {
+      const langMap = {
+        "English": "en-IN",
+        "Hindi": "hi-IN",
+        "Telugu": "te-IN",
+        "Tamil": "ta-IN",
+        "Kannada": "kn-IN"
+      };
+      recognitionRef.current.lang = langMap[selectedLanguage] || "en-US";
+      recognitionRef.current.start();
+      setIsRecording(true);
+    }
+  };
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [projectsCollapsed, setProjectsCollapsed] = useState({});
   const [qdrantStatus, setQdrantStatus] = useState("connecting");
@@ -392,30 +447,66 @@ export default function AgentDashboard() {
     try { await logout(); navigate('/login'); } catch (e) { console.error(e); }
   };
 
+  const handlePlayAudio = async (text) => {
+    if (isPlayingAudio) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsPlayingAudio(false);
+      return;
+    }
+
+    setIsPlayingAudio(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => setIsPlayingAudio(false);
+        audio.play();
+      } else {
+        console.error("TTS failed", await response.text());
+        setIsPlayingAudio(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setIsPlayingAudio(false);
+    }
+  };
+
   const handleNewChat = () => {
     setMessages([]);
     setInputText('');
-    setAttachedFile(null);
+    setAttachedFiles([]);
     setChatTitle('');
     setDetectedJurisdiction('');
     setActiveChat(null);
   };
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) setAttachedFile(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      setAttachedFiles(prev => [...prev, ...files]);
+    }
     e.target.value = null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!inputText.trim() && !attachedFile) return;
+    if (!inputText.trim() && attachedFiles.length === 0) return;
 
     // Generate or retrieve current session ID & Title
     const isNew = !activeChat;
     const currentChatId = activeChat || ("chat-" + Date.now() + Math.floor(Math.random() * 1000));
-    const fileToSend = attachedFile;
-    const currentTitle = chatTitle || (fileToSend ? fileToSend.name.replace(/\.[^/.]+$/, '') : (inputText.substring(0, 30) || 'New Chat'));
+    const filesToSend = [...attachedFiles];
+    const currentTitle = chatTitle || (filesToSend.length > 0 ? filesToSend[0].name.replace(/\.[^/.]+$/, '') : (inputText.substring(0, 30) || 'New Chat'));
 
     if (isNew) {
       setActiveChat(currentChatId);
@@ -426,13 +517,13 @@ export default function AgentDashboard() {
       id: Date.now(),
       role: 'user',
       text: inputText,
-      file: fileToSend ? fileToSend.name : null,
+      files: filesToSend.map(f => f.name),
     };
 
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInputText('');
-    setAttachedFile(null);
+    setAttachedFiles([]);
     setIsProcessing(true);
     setProcessingStatus('Initializing...');
 
@@ -466,7 +557,7 @@ export default function AgentDashboard() {
     // Immediately sync user prompt to DB
     await syncSession(currentChatId, currentTitle, updatedMessages, false, false, null);
 
-    if (!fileToSend) {
+    if (filesToSend.length === 0) {
       try {
         setProcessingStatus('Thinking...');
         const response = await fetch(
@@ -474,7 +565,7 @@ export default function AgentDashboard() {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: userMsg.text })
+            body: JSON.stringify({ message: `(Respond in ${selectedLanguage}) ` + userMsg.text })
           }
         );
 
@@ -521,8 +612,11 @@ export default function AgentDashboard() {
 
     try {
       const formData = new FormData();
-      formData.append('files', fileToSend);
+      filesToSend.forEach(file => {
+        formData.append('files', file);
+      });
       if (user?.uid) formData.append('user_id', user.uid);
+      formData.append('language', selectedLanguage);
 
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || ''}/summarise`,
@@ -661,6 +755,12 @@ export default function AgentDashboard() {
                 <span>{msg.file}</span>
               </div>
             )}
+            {msg.files && msg.files.map((fname, i) => (
+              <div key={i} className="file-badge">
+                <FileText size={13} />
+                <span>{fname}</span>
+              </div>
+            ))}
           </div>
           <div className="msg-avatar msg-avatar--user">
             {user?.photoURL
@@ -675,7 +775,19 @@ export default function AgentDashboard() {
       return (
         <div key={msg.id} className="msg-row msg-row--agent">
           <div className="msg-avatar msg-avatar--agent"><Scale size={16} /></div>
-          <div className="msg-bubble msg-bubble--agent"><p>{renderTextWithLinks(msg.text)}</p></div>
+          <div className="msg-bubble msg-bubble--agent" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <p>{renderTextWithLinks(msg.text)}</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <button 
+                onClick={() => handlePlayAudio(msg.text)}
+                className="audio-play-btn"
+                title={isPlayingAudio ? 'Stop Audio' : 'Read Aloud'}
+              >
+                {isPlayingAudio ? <Square size={14} fill="currentColor" /> : <Volume2 size={14} />}
+                <span>{isPlayingAudio ? 'Stop Audio' : 'Read Aloud'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       );
     }
@@ -692,11 +804,29 @@ export default function AgentDashboard() {
 
             {/* Document Header & Facts */}
             <div className="analysis-card">
-              <div className="analysis-card__header">
-                <BrainCircuit size={15} />
-                <span>Case Breakdown — {data.case_id}</span>
+              <div className="analysis-card__header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BrainCircuit size={15} />
+                  <span>Case Breakdown — {data.case_id}</span>
+                </div>
+                {data.eli5_summary && (
+                  <button 
+                    onClick={() => handlePlayAudio(data.eli5_summary)}
+                    className="audio-play-btn"
+                    title={isPlayingAudio ? 'Stop Audio' : 'Read Aloud'}
+                  >
+                    {isPlayingAudio ? <Square size={13} fill="currentColor" /> : <Volume2 size={13} />}
+                    <span>{isPlayingAudio ? 'Stop Audio' : 'Read Aloud'}</span>
+                  </button>
+                )}
               </div>
               <div className="analysis-card__body">
+                {data.requires_counselling && (
+                  <div style={{ background: 'rgba(255, 77, 77, 0.1)', borderLeft: '3px solid #ff4d4d', padding: '12px', marginBottom: '16px', borderRadius: '4px' }}>
+                    <p style={{ color: '#ff4d4d', margin: 0, fontSize: '13px', fontWeight: 'bold' }}>⚠️ Human Counseling Recommended</p>
+                    <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '12px' }}>This situation appears sensitive. Consider seeking professional legal or psychological counseling.</p>
+                  </div>
+                )}
                 <div className="meta-row">
                   <span className="meta-label">Jurisdiction</span>
                   <span className="jurisdiction-pill">{data.court_name}</span>
@@ -705,11 +835,74 @@ export default function AgentDashboard() {
                   <span className="meta-label">Parties</span>
                   <span>{data.petitioner} vs. {data.respondent}</span>
                 </div>
-                <p className="summary-text">{data.plain_summary}</p>
-                {data.key_facts?.length > 0 && (
+                <p className="summary-text" style={{ fontWeight: '600' }}>{data.plain_summary}</p>
+                {data.eli5_summary && (
+                  <div style={{ background: '#1c1c24', padding: '12px', borderRadius: '6px', marginTop: '12px', marginBottom: '12px', borderLeft: '3px solid #ff4d4d' }}>
+                    <span style={{ fontSize: '11px', color: '#ff4d4d', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Plain Language Explanation</span>
+                    <p className="summary-text" style={{ margin: 0 }}>{data.eli5_summary}</p>
+                  </div>
+                )}
+                {Array.isArray(data.red_flags) && data.red_flags.length > 0 && (
+                  <div className="facts-section" style={{ marginTop: '16px' }}>
+                    <span className="facts-label" style={{ color: '#ff4d4d' }}>⚠️ Critical Red Flags Identified</span>
+                    <ul style={{ listStyleType: 'disc', paddingLeft: '20px', color: '#ff6b6b' }}>
+                      {data.red_flags.map((flag, i) => (
+                        <li key={i} style={{ marginBottom: '6px', fontSize: '13px' }}>{flag}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {Array.isArray(data.actionable_steps) && data.actionable_steps.length > 0 && (
+                  <div className="facts-section" style={{ marginTop: '16px' }}>
+                    <span className="facts-label" style={{ color: '#ff4d4d' }}>Actionable Next Steps & Helplines</span>
+                    <ul style={{ listStyleType: 'none', padding: 0 }}>
+                      {data.actionable_steps.map((action, i) => (
+                        <li key={i} style={{ marginBottom: '12px', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '6px' }}>
+                          <div style={{ fontWeight: '500', color: '#fff', fontSize: '13px', marginBottom: '6px' }}>{action.step}</div>
+                          {action.phone_numbers?.length > 0 && (
+                            <div style={{ fontSize: '12px', color: '#ff4d4d', marginBottom: '4px' }}>📞 {action.phone_numbers.join(', ')}</div>
+                          )}
+                          {action.links?.length > 0 && (
+                            <div style={{ fontSize: '12px', color: '#ff6b6b' }}>🔗 {action.links.join(', ')}</div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {Array.isArray(data.key_facts) && data.key_facts.length > 0 && (
                   <div className="facts-section">
                     <span className="facts-label">Key Facts</span>
                     <ul>{data.key_facts.map((f, i) => <li key={i}>{f}</li>)}</ul>
+                  </div>
+                )}
+                {Array.isArray(data.follow_up_questions) && data.follow_up_questions.length > 0 && (
+                  <div className="facts-section" style={{ marginTop: '16px' }}>
+                    <span className="facts-label" style={{ color: '#ff4d4d' }}>Suggested Follow-up Questions</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                      {data.follow_up_questions.map((q, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => {
+                            setInputText(q);
+                            setTimeout(() => inputRef.current?.focus(), 100);
+                          }}
+                          style={{
+                            background: 'rgba(123, 97, 255, 0.1)',
+                            border: '1px solid rgba(123, 97, 255, 0.3)',
+                            color: '#e2d9ff',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1312,14 +1505,19 @@ export default function AgentDashboard() {
             ref={fileInputRef}
             style={{ display: 'none' }}
             onChange={handleFileSelect}
-            accept=".pdf,.docx,.txt"
+            accept="image/*,.pdf,.docx,.txt"
+            multiple
           />
 
-          {attachedFile && (
-            <div className="attached-pill">
-              <FileText size={13} />
-              <span>{attachedFile.name}</span>
-              <button onClick={() => setAttachedFile(null)}><X size={12} /></button>
+          {attachedFiles.length > 0 && (
+            <div className="attached-files-container" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '0 15px', marginBottom: '10px' }}>
+              {attachedFiles.map((file, idx) => (
+                <div key={idx} className="attached-pill">
+                  <FileText size={13} />
+                  <span>{file.name}</span>
+                  <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}><X size={12} /></button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -1332,6 +1530,29 @@ export default function AgentDashboard() {
             >
               <Paperclip size={19} />
             </button>
+
+            <select
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              className="language-selector"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-secondary)',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                marginRight: '8px',
+                fontSize: '12px',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="English">English</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Telugu">Telugu</option>
+              <option value="Tamil">Tamil</option>
+              <option value="Kannada">Kannada</option>
+            </select>
 
             <input
               ref={inputRef}
@@ -1346,7 +1567,7 @@ export default function AgentDashboard() {
             <button
               type="button"
               className={`input-icon-btn mic-btn ${isRecording ? 'mic-btn--active' : ''}`}
-              onClick={() => setIsRecording(v => !v)}
+              onClick={toggleRecording}
               title={isRecording ? 'Stop recording' : 'Voice input'}
             >
               {isRecording ? <MicOff size={19} /> : <Mic size={19} />}
@@ -1355,8 +1576,8 @@ export default function AgentDashboard() {
 
             <button
               type="submit"
-              className={`send-btn ${(inputText.trim() || attachedFile) && !isProcessing ? 'send-btn--active' : ''}`}
-              disabled={(!inputText.trim() && !attachedFile) || isProcessing}
+              className={`send-btn ${(inputText.trim() || attachedFiles.length > 0) && !isProcessing ? 'send-btn--active' : ''}`}
+              disabled={(!inputText.trim() && attachedFiles.length === 0) || isProcessing}
             >
               <Send size={17} />
             </button>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import Spline from '@splinetool/react-spline';
 import './MandamusGuide.css';
 
@@ -52,12 +51,7 @@ const guideMessages = {
 const MandamusGuide = ({ activeFeature }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [message, setMessage] = useState(guideMessages.landing);
-  const [domReady, setDomReady] = useState(false);
   const location = useLocation();
-
-  useEffect(() => {
-    setDomReady(true);
-  }, []);
 
   useEffect(() => {
     const path = location.pathname;
@@ -81,10 +75,8 @@ const MandamusGuide = ({ activeFeature }) => {
 
   if (location.pathname === '/login') return null;
 
-  const isDashboard = location.pathname === '/dashboard';
-
-  const content = (
-    <div className={`mandamus-guide-container ${isDashboard ? 'guide-inline' : ''}`}>
+  return (
+    <div className="mandamus-guide-container">
       {isVisible && (
         <div className="guide-bubble">
           <div className="guide-header">
@@ -106,15 +98,6 @@ const MandamusGuide = ({ activeFeature }) => {
       </div>
     </div>
   );
-
-  if (isDashboard && domReady) {
-    const dock = document.getElementById('robot-portal-dock');
-    if (dock) {
-      return createPortal(content, dock);
-    }
-  }
-
-  return content;
 };
 
 export default MandamusGuide;

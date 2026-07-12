@@ -17,7 +17,7 @@
   right: -10%;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(123, 97, 255, 0.15) 0%, rgba(123, 97, 255, 0) 70%);
+  background: radial-gradient(circle, rgba(255, 77, 77, 0.15) 0%, rgba(255, 77, 77, 0) 70%);
   z-index: 0;
   pointer-events: none;
 }
@@ -29,7 +29,7 @@
   left: -5%;
   width: 450px;
   height: 450px;
-  background: radial-gradient(circle, rgba(0, 230, 118, 0.08) 0%, rgba(0, 230, 118, 0) 70%);
+  background: radial-gradient(circle, rgba(255, 77, 77, 0.08) 0%, rgba(255, 77, 77, 0) 70%);
   z-index: 0;
   pointer-events: none;
 }
@@ -81,7 +81,7 @@
 }
 
 .header-icon {
-  color: #7b61ff;
+  color: #ff4d4d;
 }
 
 .header-title h1 {
@@ -95,7 +95,7 @@
 }
 
 .save-btn {
-  background: linear-gradient(135deg, #7b61ff 0%, #6347f5 100%);
+  background: linear-gradient(135deg, #ff4d4d 0%, #d62828 100%);
   color: #ffffff;
   border: none;
   padding: 10px 24px;
@@ -103,13 +103,13 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(123, 97, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 77, 77, 0.3);
   transition: all 0.25s ease;
 }
 
 .save-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(123, 97, 255, 0.45);
+  box-shadow: 0 6px 16px rgba(255, 77, 77, 0.45);
   filter: brightness(1.1);
 }
 
@@ -211,9 +211,9 @@
 
 .jurisdiction-pill {
   display: inline-block;
-  background: rgba(123, 97, 255, 0.12);
-  border: 1px solid rgba(123, 97, 255, 0.2);
-  color: #a291ff;
+  background: rgba(255, 77, 77, 0.12);
+  border: 1px solid rgba(255, 77, 77, 0.2);
+  color: #ff6b6b;
   padding: 3px 8px;
   border-radius: 6px;
   font-size: 12px !important;
@@ -224,7 +224,7 @@
 .summary-section h3,
 .key-facts-section h3 {
   font-size: 13px;
-  color: #7b61ff;
+  color: #ff4d4d;
   font-weight: 600;
   margin: 0 0 10px 0;
   text-transform: uppercase;
@@ -527,14 +527,14 @@
 }
 
 .edit-textarea:focus, .comment-textarea:focus {
-  border-color: rgba(123, 97, 255, 0.4);
-  box-shadow: 0 0 0 3px rgba(123, 97, 255, 0.15);
+  border-color: rgba(255, 77, 77, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.15);
   background: rgba(10, 9, 21, 0.6);
 }
 
 .edit-textarea {
   min-height: 90px;
-  border-color: rgba(123, 97, 255, 0.15);
+  border-color: rgba(255, 77, 77, 0.15);
 }
 
 .comment-textarea {
