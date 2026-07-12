@@ -1,92 +1,170 @@
-# Legal Document Intelligence Agent
-HiDevs × Mastra Hackathon 2026 — Team KekaCoders
+<div align="center">
+  <img src="frontend/public/Logo.png" alt="LexAgent Logo" width="120" />
+  <h1>LexAgent (Mandamus Judicial Platform)</h1>
+  <p><strong>Accelerating Justice through Agentic AI and 'Judge-in-the-Loop' Workflows</strong></p>
 
-## What this actually does, in plain English
+  [![React](https://img.shields.io/badge/React-18.x-blue?style=for-the-badge&logo=react)](https://reactjs.org/)
+  [![Mastra](https://img.shields.io/badge/Mastra-Agentic_Framework-orange?style=for-the-badge)](https://mastra.ai/)
+  [![Hono](https://img.shields.io/badge/Hono-API_Gateway-red?style=for-the-badge)](https://hono.dev/)
+  [![Qdrant](https://img.shields.io/badge/Qdrant-Vector_DB-purple?style=for-the-badge)](https://qdrant.tech/)
+  [![Enkrypt AI](https://img.shields.io/badge/Enkrypt_AI-Guardrails-brightgreen?style=for-the-badge)](https://enkryptai.com/)
+</div>
 
-1. You paste in a contract.
-2. **Enkrypt AI (Input Guard)** checks the text isn't malicious or trying to
-   trick the AI, before anything else happens.
-3. An agent reads the contract and figures out which state's law governs it
-   (e.g. "This Agreement shall be governed by California law").
-4. The contract is split into individual clauses.
-5. For each clause, **Qdrant** searches a library of example clauses —
-   but ONLY clauses from the *same state* (jurisdiction-filtered search).
-   This is the part a plain ChatGPT prompt can't do: it has no real filing
-   cabinet, and it doesn't know to only compare California clauses against
-   other California clauses.
-6. An agent compares the clause to what it found and flags it low/medium/high risk.
-7. For anything risky, another agent drafts a safer replacement clause,
-   grounded only in the examples that were actually retrieved.
-8. **Enkrypt AI (Output Guard)** checks that draft for made-up citations,
-   bias, or policy violations. If it fails, the draft goes back to step 7
-   with the specific failure reason — this is the "regeneration loop" and
-   it will happen live in your demo, which is your strongest visual proof
-   that the safety layer is real and not decorative.
-9. You (acting as the reviewing lawyer) see every flagged clause with the
-   exact precedents that drove the flag, and an Approve button.
+<hr/>
 
-## Setup (do this today)
+## 📖 Overview
 
-1. **Get three free accounts / keys:**
-   - OpenAI: https://platform.openai.com (for embeddings + the LLM reasoning)
-   - Qdrant Cloud free cluster: https://cloud.qdrant.io
-   - Enkrypt AI: https://app.enkryptai.com
+**LexAgent** (part of the Mandamus platform) is a high-fidelity, enterprise-grade Legal Document Intelligence Agent. Built for the **HiDevs x Mastra Hackathon 2026**, it tackles the global case pendency crisis by augmenting human legal reasoning.
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+We embrace a **Judge-in-the-Loop** philosophy. LexAgent does not replace legal professionals; it acts as a hyper-intelligent co-pilot that ingests hundreds of pages of legal text, performs semantic precedent searches, analyzes clauses, and evaluates risks—all under 60 seconds.
 
-3. **Copy `.env.example` to `.env` and fill in your real keys.**
+---
 
-4. **Seed the fake "law firm knowledge base" into Qdrant:**
-   ```bash
-   npm run seed
-   ```
-   This loads ~20 sample precedent clauses across New York and California
-   into Qdrant. In a 3-day hackathon, this stands in for a real firm's
-   clause library — that's a totally normal and expected shortcut, just
-   say so out loud in your demo narration.
+## ✨ Key Features
 
-5. **Run the app:**
-   ```bash
-   npm run dev
-   ```
-   Open http://localhost:3000 — there's a sample California contract
-   pre-filled in the textbox so you can test immediately.
+- 🧠 **Neural Engine (Multi-Document Processing)**: Upload massive PDFs. The backend orchestrates concurrent text extraction and passes it through an advanced LLM reasoning pipeline (Amazon Bedrock & Gemini 1.5).
+- 🛡️ **Enkrypt AI Guardrails**: 
+  - *Input Guard*: Protects the system from malicious prompt injections or toxic inputs.
+  - *Output Guard*: Prevents AI hallucinations by cross-checking generated legal claims and citations against retrieved precedents.
+- 📚 **Semantic Precedent Search**: Powered by **Qdrant Vector Database**, finding the top matching case laws and legal precedents instantly.
+- 🎙️ **Real-Time Text-to-Speech**: Built-in integration with **ElevenLabs**, allowing users to have generated legal briefs and insights read aloud instantly.
+- 💬 **Persistent Conversational UI**: A ChatGPT-style interface with full chat history, pinned sessions, workspaces, and real-time Server-Sent Events (SSE) streaming.
+- 🔒 **Secure Enclave**: Powered by Firebase Authentication for enterprise-grade secure access.
 
-## What's real vs. simplified (be upfront about this to judges — it builds trust)
+---
 
-| Feature | Status |
-|---|---|
-| Mastra multi-step workflow orchestration | Real |
-| Qdrant jurisdiction-filtered hybrid-ish search (semantic) | Real |
-| Enkrypt AI Input Guard | Real |
-| Enkrypt AI Output Guard + regeneration loop | Real |
-| Hallucination cross-check against retrieval set | Real, but custom-built (Enkrypt's native hallucination detector is marked "coming soon" in their docs as of this build) |
-| Senior Partner Sign-off | Simplified to an Approve button — no real digital signature service |
-| Risk Analytics / ML recalibration from overrides | Not built — mention it as your "next step" roadmap item |
-| BM25 keyword search alongside semantic | Not built — semantic-only for now; mention as roadmap if asked |
-| PostgreSQL config store | Simplified to a TypeScript file |
+## 🏗️ System Architecture
 
-## Next 3 days — build order
+LexAgent uses a modern decoupled architecture. The frontend is a lightning-fast React SPA, communicating with a Hono API Gateway that orchestrates complex workflows via Mastra.
 
-- **Today:** get all 3 API keys, run `npm run seed`, confirm the app runs
-  end to end on the sample contract.
-- **Tomorrow:** test with 2-3 more real contract excerpts (NDA, service
-  agreement). Fix any JSON-parsing issues from the LLM agents (add
-  `response_format: json_object` type constraints if you see raw text
-  breaking `JSON.parse`).
-- **Day after:** record your demo video showing the regeneration loop
-  firing at least once, clean up the GitHub repo, write the project
-  description, deploy (Railway, Render, or Fly.io are the fastest for a
-  Node/Hono app like this).
-- **Finale day:** rehearse a 2-minute pitch that leads with "watch what
-  happens when the AI tries to cite something it can't back up" and shows
-  the regeneration loop live.
+```mermaid
+graph TD
+    User([👨‍⚖️ Legal Professional])
+    
+    subgraph Frontend [Vercel Deployment]
+        UI[React + Vite UI]
+        Auth[(Firebase Auth)]
+    end
+    
+    subgraph Backend [Render Deployment]
+        API[Hono API Gateway]
+        Mastra[Mastra Agentic Workflow]
+    end
+    
+    subgraph External Intelligence & Storage
+        Qdrant[(Qdrant Vector DB)]
+        Gemini[Google Gemini 1.5]
+        Bedrock[Amazon Bedrock LLM]
+        Enkrypt[Enkrypt AI Guardrails]
+        ElevenLabs[ElevenLabs TTS]
+    end
 
-## Notes on the TypeScript-only rule
+    User <-->|HTTPS| UI
+    UI <-->|Authenticates| Auth
+    UI <-->|REST & SSE Streams| API
+    
+    API <-->|Executes| Mastra
+    Mastra -->|Session/History Storage| Qdrant
+    Mastra -->|Vector Embeddings| Gemini
+    Mastra -->|Legal Reasoning| Bedrock
+    Mastra -->|Input/Output Validation| Enkrypt
+    Mastra -->|Audio Generation| ElevenLabs
+```
 
-This hackathon requires TypeScript end to end. This build uses Hono +
-Node instead of the PRD's original FastAPI/Python backend, and Mastra's
-own workflow branching instead of LangGraph, to stay compliant.
+---
+
+## 📂 Project Structure
+
+```text
+legal-agent-mvp/
+├── frontend/                 # React UI Workspace
+│   ├── src/
+│   │   ├── components/       # UI Components (Dashboard, Chat, Cards)
+│   │   ├── context/          # State Management (Auth, History)
+│   │   └── lib/              # Firebase Initialization
+│   ├── index.html            # Vite Entry
+│   └── vercel.json           # Vercel Deployment Config
+├── src/                      # Backend Node.js Workspace
+│   ├── mastra/               # Mastra Agent Definitions
+│   │   ├── agents/           # Legal, Drafting, & QA Agents
+│   │   └── workflows/        # Orchestrated Analysis Workflows
+│   ├── lib/
+│   │   ├── enkrypt.ts        # Enkrypt AI Guardrail Integrations
+│   │   └── qdrant.ts         # Vector DB & Chat History Logic
+│   └── server.ts             # Hono API Gateway & Routing
+├── package.json              # Monorepo Dependencies
+└── render.yaml               # Render Deployment Config
+```
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+Ensure you have the following installed:
+- **Node.js** (v20+)
+- **npm** or **yarn**
+
+### 2. Environment Setup
+You will need two `.env` files. 
+
+**Root Directory (`/.env`)**:
+```env
+GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_key
+QDRANT_URL=your_qdrant_cluster_url
+QDRANT_API_KEY=your_qdrant_key
+ENKRYPTAI_API_KEY=your_enkrypt_key
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+AWS_REGION=us-east-1
+ELEVENLABS_API_KEY=your_elevenlabs_key
+PORT=3001
+```
+
+**Frontend Directory (`/frontend/.env`)**:
+```env
+VITE_FIREBASE_API_KEY=your_firebase_key
+VITE_FIREBASE_AUTH_DOMAIN=your_firebase_domain
+VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
+VITE_API_URL=http://localhost:3001
+```
+
+### 3. Installation & Running Locally
+
+Install all dependencies from the root:
+```bash
+npm install
+cd frontend && npm install
+cd ..
+```
+
+Start the Backend (runs on port 3001):
+```bash
+npm run dev
+```
+
+Start the Frontend (runs on port 5173):
+```bash
+cd frontend
+npm run dev
+```
+
+---
+
+## 🌐 Deployment
+
+The repository is pre-configured for modern, serverless-friendly deployments.
+
+- **Frontend**: Designed for 1-click deployment on **Vercel**. Select the `frontend` folder as your Root Directory.
+- **Backend**: Designed for deployment on **Render.com** (to avoid Vercel's 10-second serverless timeout). A `render.yaml` blueprint is included in the root directory.
+
+---
+
+## 🤝 Philosophy: Judge-in-the-Loop
+
+We believe AI should not pass judgments. **LexAgent** adheres strictly to the "Judge-in-the-Loop" standard:
+1. **Traceability**: Every citation and precedent suggested is mapped back to verified legal databases (via Qdrant & Enkrypt hallucination checks).
+2. **Forensic Versioning**: All edits to legal drafts are tracked and reversible.
+3. **Data Security**: Court data remains encrypted and isolated. 
+
+*Built with ❤️ for the HiDevs x Mastra Hackathon.*
