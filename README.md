@@ -1,41 +1,111 @@
 <div align="center">
   <img src="frontend/public/Logo.png" alt="LexAgent Logo" width="120" />
   <h1>LexAgent (Mandamus Judicial Platform)</h1>
-  <p><strong>Accelerating Justice through Agentic AI and 'Judge-in-the-Loop' Workflows</strong></p>
+  <p><strong>An Enterprise-Grade, Agentic Legal Co-Pilot tackling the Global Case Pendency Crisis.</strong></p>
 
   [![React](https://img.shields.io/badge/React-18.x-blue?style=for-the-badge&logo=react)](https://reactjs.org/)
   [![Mastra](https://img.shields.io/badge/Mastra-Agentic_Framework-orange?style=for-the-badge)](https://mastra.ai/)
   [![Hono](https://img.shields.io/badge/Hono-API_Gateway-red?style=for-the-badge)](https://hono.dev/)
   [![Qdrant](https://img.shields.io/badge/Qdrant-Vector_DB-purple?style=for-the-badge)](https://qdrant.tech/)
   [![Enkrypt AI](https://img.shields.io/badge/Enkrypt_AI-Guardrails-brightgreen?style=for-the-badge)](https://enkryptai.com/)
+  [![Amazon Bedrock](https://img.shields.io/badge/Amazon-Bedrock-FF9900?style=for-the-badge&logo=amazonaws)](https://aws.amazon.com/bedrock/)
 </div>
 
-<hr/>
+<br/>
 
-## 📖 Overview
-
-**LexAgent** (part of the Mandamus platform) is a high-fidelity, enterprise-grade Legal Document Intelligence Agent. Built for the **HiDevs x Mastra Hackathon 2026**, it tackles the global case pendency crisis by augmenting human legal reasoning.
-
-We embrace a **Judge-in-the-Loop** philosophy. LexAgent does not replace legal professionals; it acts as a hyper-intelligent co-pilot that ingests hundreds of pages of legal text, performs semantic precedent searches, analyzes clauses, and evaluates risks—all under 60 seconds.
-
----
-
-## ✨ Key Features
-
-- 🧠 **Neural Engine (Multi-Document Processing)**: Upload massive PDFs. The backend orchestrates concurrent text extraction and passes it through an advanced LLM reasoning pipeline (Amazon Bedrock & Gemini 1.5).
-- 🛡️ **Enkrypt AI Guardrails**: 
-  - *Input Guard*: Protects the system from malicious prompt injections or toxic inputs.
-  - *Output Guard*: Prevents AI hallucinations by cross-checking generated legal claims and citations against retrieved precedents.
-- 📚 **Semantic Precedent Search**: Powered by **Qdrant Vector Database**, finding the top matching case laws and legal precedents instantly.
-- 🎙️ **Real-Time Text-to-Speech**: Built-in integration with **ElevenLabs**, allowing users to have generated legal briefs and insights read aloud instantly.
-- 💬 **Persistent Conversational UI**: A ChatGPT-style interface with full chat history, pinned sessions, workspaces, and real-time Server-Sent Events (SSE) streaming.
-- 🔒 **Secure Enclave**: Powered by Firebase Authentication for enterprise-grade secure access.
+## 📖 Table of Contents
+1. [The Problem & Our Solution](#-the-problem--our-solution)
+2. [Hackathon Core Technologies](#-hackathon-core-technologies)
+   - [Mastra (Agent Orchestration)](#1-mastra-agent-orchestration-framework)
+   - [Qdrant (Vector Memory & RAG)](#2-qdrant-vector-database--memory)
+   - [Enkrypt AI (Security Guardrails)](#3-enkrypt-ai-security--guardrails)
+3. [Master System Architecture](#-master-system-architecture)
+4. [Additional Capabilities](#-additional-capabilities)
+5. [Local Setup & Installation](#-local-setup--installation)
+6. [Production Deployment](#-production-deployment)
 
 ---
 
-## 🏗️ System Architecture
+## 🌍 The Problem & Our Solution
 
-LexAgent uses a modern decoupled architecture. The frontend is a lightning-fast React SPA, communicating with a Hono API Gateway that orchestrates complex workflows via Mastra.
+Courts worldwide are suffocating under a massive backlog of pending cases. Legal professionals spend hundreds of hours manually reading documents, analyzing clauses, and searching for relevant case law. 
+
+**LexAgent** is our solution. Designed with a strict **"Judge-in-the-Loop"** philosophy, LexAgent does not attempt to replace human judgment. Instead, it acts as a hyper-intelligent, agentic co-pilot that ingests hundreds of pages of legal text, performs semantic precedent searches, analyzes clauses, and evaluates risks—all under 60 seconds.
+
+---
+
+## 🏆 Hackathon Core Technologies
+
+To achieve enterprise-grade reliability, LexAgent leverages three critical pillars required for modern AI applications: Orchestration, Memory, and Security.
+
+### 1. Mastra (Agent Orchestration Framework)
+We utilized **Mastra** as the central nervous system of our backend. Instead of writing brittle, linear LLM chains, Mastra allows us to define highly specialized "Agents" that collaborate together. 
+
+- **Legal QA Agent**: Handles general inquiries and interprets the user's intent.
+- **Clause Analysis Agent**: Specifically extracts, parses, and identifies risks in contract clauses.
+- **Jurisdiction Agent**: Determines the appropriate legal jurisdiction for uploaded documents to narrow down precedent searches.
+
+**How Mastra fits in:**
+```mermaid
+sequenceDiagram
+    participant User
+    participant Hono API
+    participant Mastra Orchestrator
+    participant Legal Agent
+    participant Clause Agent
+
+    User->>Hono API: Uploads Case PDF
+    Hono API->>Mastra Orchestrator: Trigger "Legal Analysis Workflow"
+    Mastra Orchestrator->>Legal Agent: Distill facts & summarize
+    Mastra Orchestrator->>Clause Agent: Extract penal codes & liabilities
+    Legal Agent-->>Mastra Orchestrator: Return Summary Object
+    Clause Agent-->>Mastra Orchestrator: Return Clause JSON Array
+    Mastra Orchestrator-->>Hono API: Merge results & stream via SSE
+    Hono API-->>User: Real-time Dashboard Update
+```
+
+### 2. Qdrant (Vector Database & Memory)
+LexAgent requires both long-term memory for user sessions and semantic understanding of massive legal databases. **Qdrant** powers both of these requirements simultaneously.
+
+- **Precedent RAG (Retrieval-Augmented Generation)**: When a lawyer asks a question, LexAgent converts it into embeddings using `Google Gemini (text-embedding-004)` and searches a Qdrant cluster to retrieve the top 5 most legally relevant historical cases.
+- **Session Persistence**: We store entire conversational threads, metadata, and user project groupings directly in Qdrant, allowing users to seamlessly resume their research weeks later.
+
+**The Qdrant RAG Pipeline:**
+```mermaid
+graph LR
+    Query[User Query] --> Embed[Gemini Embeddings]
+    Embed -->|Vector [0.1, 0.4...]| Qdrant[(Qdrant Cloud)]
+    
+    Qdrant -->|Similarity Search| Docs[Top 5 Precedents]
+    Docs --> Prompt[Context Injected Prompt]
+    Prompt --> LLM[Amazon Bedrock]
+    LLM --> Response[Legal Advice with Citations]
+```
+
+### 3. Enkrypt AI (Security & Guardrails)
+An AI lawyer that hallucinates fake cases is worse than no AI at all. We integrated **Enkrypt AI** to provide an impenetrable defense mechanism around our LLMs, ensuring enterprise compliance.
+
+- **Input Guard (Prompt Injection Defense)**: Before a user's prompt ever reaches Amazon Bedrock, Enkrypt AI scans it for malicious injections attempting to "jailbreak" the agent into bypassing legal confidentiality constraints.
+- **Output Guard (Hallucination Prevention)**: After the LLM generates a legal draft, Enkrypt AI acts as an Output Guard. We cross-reference the generated citations against the facts retrieved from Qdrant. If the AI invents a penal code or case law that doesn't exist, the Output Guard flags it and blocks it from being presented to the user.
+
+**The Enkrypt Security Funnel:**
+```mermaid
+graph TD
+    Input[Raw User Input] --> InputGuard{Enkrypt Input Guard}
+    InputGuard -->|Malicious/Toxic| Block1[Reject Request]
+    InputGuard -->|Safe| Bedrock[Amazon Bedrock LLM]
+    
+    Bedrock --> Draft[Draft Legal Response]
+    Draft --> OutputGuard{Enkrypt Output Guard}
+    OutputGuard -->|Hallucinated Citations| Block2[Flag as Unreliable]
+    OutputGuard -->|Verified| User[Deliver to User]
+```
+
+---
+
+## 🧠 Master System Architecture
+
+By combining these incredible technologies, we built a highly decoupled, scalable architecture. The frontend is hosted on a fast CDN, while the Hono server runs on a dedicated instance to manage long-running PDF extraction and RAG workflows.
 
 ```mermaid
 graph TD
@@ -64,12 +134,20 @@ graph TD
     UI <-->|REST & SSE Streams| API
     
     API <-->|Executes| Mastra
-    Mastra -->|Session/History Storage| Qdrant
+    Mastra -->|Session Storage & RAG| Qdrant
     Mastra -->|Vector Embeddings| Gemini
     Mastra -->|Legal Reasoning| Bedrock
     Mastra -->|Input/Output Validation| Enkrypt
     Mastra -->|Audio Generation| ElevenLabs
 ```
+
+---
+
+## ⚡ Additional Capabilities
+
+- **Real-Time Text-to-Speech**: Built-in integration with **ElevenLabs**, allowing visually impaired users or busy professionals to have generated legal briefs and insights read aloud instantly.
+- **Persistent Conversational UI**: A ChatGPT-style interface with full chat history, pinned sessions, workspaces, and real-time Server-Sent Events (SSE) streaming.
+- **Secure Enclave**: Powered by Firebase Authentication for enterprise-grade secure access, supporting both Google OAuth and traditional Email/Password strategies.
 
 ---
 
@@ -98,7 +176,7 @@ legal-agent-mvp/
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Local Setup & Installation
 
 ### 1. Prerequisites
 Ensure you have the following installed:
@@ -106,7 +184,7 @@ Ensure you have the following installed:
 - **npm** or **yarn**
 
 ### 2. Environment Setup
-You will need two `.env` files. 
+You will need two `.env` files to run the project.
 
 **Root Directory (`/.env`)**:
 ```env
@@ -129,7 +207,7 @@ VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
 VITE_API_URL=http://localhost:3001
 ```
 
-### 3. Installation & Running Locally
+### 3. Running Locally
 
 Install all dependencies from the root:
 ```bash
@@ -151,7 +229,7 @@ npm run dev
 
 ---
 
-## 🌐 Deployment
+## 🌐 Production Deployment
 
 The repository is pre-configured for modern, serverless-friendly deployments.
 
@@ -160,11 +238,6 @@ The repository is pre-configured for modern, serverless-friendly deployments.
 
 ---
 
-## 🤝 Philosophy: Judge-in-the-Loop
-
-We believe AI should not pass judgments. **LexAgent** adheres strictly to the "Judge-in-the-Loop" standard:
-1. **Traceability**: Every citation and precedent suggested is mapped back to verified legal databases (via Qdrant & Enkrypt hallucination checks).
-2. **Forensic Versioning**: All edits to legal drafts are tracked and reversible.
-3. **Data Security**: Court data remains encrypted and isolated. 
-
-*Built with ❤️ for the HiDevs x Mastra Hackathon.*
+<div align="center">
+  <i>Built with ❤️ for the HiDevs x Mastra Hackathon.</i>
+</div>
