@@ -19,10 +19,11 @@
 | :--- | :--- |
 | **[1. The Problem & Our Solution](#-the-problem--our-solution)** | Overview of the pendency crisis and Judge-in-the-Loop philosophy |
 | **[2. Hackathon Core Technologies](#-hackathon-core-technologies)** | Deep dive into **Mastra**, **Qdrant**, and **Enkrypt AI** integrations |
-| **[3. Master System Architecture](#-master-system-architecture)** | End-to-end system and deployment architecture diagram |
-| **[4. Additional Capabilities](#-additional-capabilities)** | Features like ElevenLabs TTS and Firebase Auth |
-| **[5. Local Setup & Installation](#-local-setup--installation)** | Step-by-step instructions to run LexAgent locally |
-| **[6. Production Deployment](#-production-deployment)** | Instructions for Vercel (Frontend) and Render (Backend) |
+| **[3. Hackathon Judging Criteria Alignment](#-hackathon-judging-criteria-alignment)** | How LexAgent addresses every evaluation metric |
+| **[4. Master System Architecture](#-master-system-architecture)** | End-to-end system and deployment architecture diagram |
+| **[5. Additional Capabilities](#-additional-capabilities)** | Features like ElevenLabs TTS and Firebase Auth |
+| **[6. Local Setup & Installation](#-local-setup--installation)** | Step-by-step instructions to run LexAgent locally |
+| **[7. Production Deployment](#-production-deployment)** | Instructions for Vercel (Frontend) and Render (Backend) |
 
 ---
 
@@ -100,6 +101,24 @@ graph TD
     OutputGuard -->|Hallucinated Citations| Block2[Flag as Unreliable]
     OutputGuard -->|Verified| User[Deliver to User]
 ```
+
+---
+
+## 🎯 Hackathon Judging Criteria Alignment
+
+We built LexAgent with the hackathon's specific evaluation metrics in mind. Here is how we address each one:
+
+| Criterion | How LexAgent Excels |
+| :--- | :--- |
+| **Engineering Quality** | Built with a robust, type-safe **TypeScript** stack (Node/Hono/React). We implemented proper environment isolation, clean service abstractions, and robust error handling for LLM timeouts. |
+| **AI Agent Workflow** | We moved beyond simple single-prompt chatbots. By utilizing a multi-agent workflow, we route complex legal documents through specialized agents (Extraction, Reasoning, Drafting) in parallel and sequence. |
+| **System Design** | We implemented a deliberate **Split Architecture**: Vercel handles the blazing-fast React CDN, while Render hosts the Hono API to completely bypass serverless timeout limits (10s) that would otherwise kill long-running PDF extractions. |
+| **Mastra Integration** | Mastra is the backbone of our backend, orchestrating the state, memory, and tool-calling execution of our `LegalAgent` and `ClauseAgent` autonomously. |
+| **Qdrant Usage** | We maximized Qdrant's utility by using it for two distinct purposes: **1)** High-dimensional semantic search for legal precedents (RAG), and **2)** Persistent, session-based conversational memory storage. |
+| **Enkrypt AI Integration** | We implemented a dual-layered defense. **Input Guards** prevent malicious prompt injections from users, and **Output Guards** cross-check generated claims against Qdrant to prevent the AI from hallucinating fake laws. |
+| **Innovation** | Instead of claiming to "replace lawyers," we built a realistic **"Judge-in-the-Loop"** platform. We focus on accelerating the boring parts (document parsing, precedent searching) while leaving the final judgment to humans, making this a highly realistic MVP for the current case pendency crisis. |
+| **User Experience** | We built a ChatGPT-style conversational interface featuring real-time **SSE streaming** (so users don't stare at loading spinners), a premium dark-mode legal aesthetic, and integrated **ElevenLabs TTS** for audio accessibility. |
+| **Code Quality** | The codebase is strictly organized into decoupled layers: UI components, State Contexts, API Routes, Agent Definitions, and Provider Libraries (Qdrant/Enkrypt). |
 
 ---
 
