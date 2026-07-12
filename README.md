@@ -14,15 +14,15 @@
 <br/>
 
 ## 📖 Table of Contents
-1. [The Problem & Our Solution](#-the-problem--our-solution)
-2. [Hackathon Core Technologies](#-hackathon-core-technologies)
-   - [Mastra (Agent Orchestration)](#1-mastra-agent-orchestration-framework)
-   - [Qdrant (Vector Memory & RAG)](#2-qdrant-vector-database--memory)
-   - [Enkrypt AI (Security Guardrails)](#3-enkrypt-ai-security--guardrails)
-3. [Master System Architecture](#-master-system-architecture)
-4. [Additional Capabilities](#-additional-capabilities)
-5. [Local Setup & Installation](#-local-setup--installation)
-6. [Production Deployment](#-production-deployment)
+
+| Section | Description |
+| :--- | :--- |
+| **[1. The Problem & Our Solution](#-the-problem--our-solution)** | Overview of the pendency crisis and Judge-in-the-Loop philosophy |
+| **[2. Hackathon Core Technologies](#-hackathon-core-technologies)** | Deep dive into **Mastra**, **Qdrant**, and **Enkrypt AI** integrations |
+| **[3. Master System Architecture](#-master-system-architecture)** | End-to-end system and deployment architecture diagram |
+| **[4. Additional Capabilities](#-additional-capabilities)** | Features like ElevenLabs TTS and Firebase Auth |
+| **[5. Local Setup & Installation](#-local-setup--installation)** | Step-by-step instructions to run LexAgent locally |
+| **[6. Production Deployment](#-production-deployment)** | Instructions for Vercel (Frontend) and Render (Backend) |
 
 ---
 
@@ -74,7 +74,7 @@ LexAgent requires both long-term memory for user sessions and semantic understan
 ```mermaid
 graph LR
     Query[User Query] --> Embed[Gemini Embeddings]
-    Embed -->|Vector [0.1, 0.4...]| Qdrant[(Qdrant Cloud)]
+    Embed -->|"Vector [0.1, 0.4...]"| Qdrant[(Qdrant Cloud)]
     
     Qdrant -->|Similarity Search| Docs[Top 5 Precedents]
     Docs --> Prompt[Context Injected Prompt]
