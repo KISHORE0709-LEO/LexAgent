@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import Spline from '@splinetool/react-spline';
+import { Bot } from 'lucide-react';
 import './MandamusGuide.css';
 
 const guideMessages = {
@@ -90,11 +90,24 @@ const MandamusGuide = ({ activeFeature }) => {
         </div>
       )}
       
-      <div className="robot-wrapper" onClick={() => setIsVisible(!isVisible)}>
-        <Spline 
-          scene="https://prod.spline.design/rU2-Ks0SC0T5od9B/scene.splinecode" 
-          onLoad={() => console.log('Robot Guide Initialized')}
-        />
+      <div 
+        className="robot-wrapper" 
+        onClick={() => setIsVisible(!isVisible)}
+        style={{ 
+          width: '60px', 
+          height: '60px', 
+          background: 'rgba(20, 20, 20, 0.9)', 
+          border: '1px solid rgba(224, 32, 32, 0.5)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 0 20px rgba(224, 32, 32, 0.3)',
+          margin: '20px 0 0 auto',
+          cursor: 'pointer'
+        }}
+      >
+        <Bot size={32} color="#e02020" style={{ filter: 'drop-shadow(0 0 5px rgba(224,32,32,0.8))' }} />
       </div>
     </div>
   );

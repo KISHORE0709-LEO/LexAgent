@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../lib/firebase';
-import Spline from '@splinetool/react-spline';
 import { 
   Send, 
   FileText, 
