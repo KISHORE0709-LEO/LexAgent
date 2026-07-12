@@ -41,8 +41,17 @@ const ProtectedRoute = ({ children }) => {
   
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100vw', background: '#0a0915', color: '#fff', fontFamily: 'system-ui' }}>
-        <div style={{ fontSize: '16px', fontWeight: '500', letterSpacing: '1px' }}>Verifying credentials...</div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', width: '100vw', background: '#0a0915', gap: '16px'
+      }}>
+        <div style={{
+          width: '36px', height: '36px', border: '3px solid rgba(214,40,40,0.2)',
+          borderTop: '3px solid #d62828', borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite'
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <span style={{ color: '#888', fontSize: '13px', letterSpacing: '1px' }}>Loading LexAgent...</span>
       </div>
     );
   }
@@ -105,8 +114,6 @@ function App() {
               </Routes>
             </div>
             
-            
-            <MandamusGuide />
           </div>
         </Router>
       </MandamusProvider>
